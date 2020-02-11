@@ -1,0 +1,6 @@
+RPi.GPIO
+pyserial
+zmq
+sqlalchemy
+emails
+

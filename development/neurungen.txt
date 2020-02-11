@@ -1,0 +1,27 @@
+- Fehler werden nur noch bei Zustandsänderung abgespeichert, was die Fehlersuche erleichtert.
+  Unter anderem kann man dort auch sehen, wann der Akku aus war (Fehler: 7)
+- Wenn man das WLAN-Modul neustartet, beginnt ein neuer Zyklus.
+- Geplant ist die Systemzeit auch im Browser setzen zu können.
+- FTP?
+- Export eines Zyklus via API-Route (und im Webinterface) als csv,excel?,pdf?
+- Geplant: Dashboard, bei dem man den Zyklus auswählen kann und die Statistiken sieht.
+
+
+- Geplant: SSH für AP0 und WLAN0 deaktivieren, dem Nutzer die möglichkeit zu geben das zu ändern.
+- Der Micro-USB-Port läuft im OTG-Modus. D.h. es wird vom PC als
+  - Serieller Port für die Konsole
+  - Massenspeicher: Zugriff auf die Daten Partition der SD-Karte
+  - USB-Ethernet für SSH Zugriff
+- Da das WLAN-Modul keine integrierte Uhr hat, muss diese über einen Zeitserver gesetzt werden,
+  was nur mit einer aktiven Internetverbindung via WLAN funktioniert.
+- Wenn der Dienst server.py gestartet wird, wird der nächste Zyklus gesetzt und verwendet.
+- Daten werden jetzt mit Zyklus-Nummer abgespeichert, was die Auswertungen von Statistiken vereinfacht
+- Wenn das WLAN-Modul nun 2 Wochen lang durchläuft, ist das alles innerhalb eines Zyklus.
+- Der Micro-USB-Port läuft im OTG-Modus. D.h. es wird vom PC als
+  - Serieller Port für die Konsole
+  - Massenspeicher: Zugriff auf die Daten Partition der SD-Karte
+  - USB-Ethernet für SSH Zugriff
+- Swagger Ui und ReDocs funktioieren nun lokal ohne Internet
+- http://192.168.0.1/docs
+- http://192.168.0.1/redoc
+

@@ -1,0 +1,8 @@
+from parted import Device, Disk
+
+device = Device('/dev/mmcblk0')
+disk = Disk(device=device)
+
+for part in disk.partitions:
+    print(part.path, round(part.getSize('MB')))
+
