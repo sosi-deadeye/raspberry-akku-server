@@ -1,19 +1,18 @@
 import datetime
 from io import BytesIO
 import matplotlib.pyplot as plt
-from typing import List
+from typing import Union
 
 
 from database import (
-    session,
+    Session,
     Statistik,
     Configuration,
-    get_cycle,
-    desc, asc,
+    desc,
 )
 
 
-def plot(cycle, history):
+def plot(session: Session, cycle: int, history: Union[float, int]) -> bytes:
     """
     Statistiken aus [cycle] der letzen [history] plotten
     """

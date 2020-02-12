@@ -10,7 +10,7 @@ from typing import Union
 from datetime import datetime
 from enum import IntEnum, Enum
 from subprocess import call
-from logging import getLogger, basicConfig, INFO
+from logging import getLogger, basicConfig, INFO, DEBUG
 from queue import Queue
 
 import RPi.GPIO as gpio
@@ -82,11 +82,15 @@ class QueryScheduler:
     def switch(self, mode):
         if mode == self.LIVE:
             self.normal_after = time.monotonic() + self.live_timeout
+            print(time.monotonic(), self.normal_after)
         if self.mode != mode:
             self.mode = mode
             self.waiting = self._next_in_waiting()
             if mode == self.LIVE:
                 log.info(f"Switch mode to {mode}")
+
+    def live(self):
+        self.switch(self.LIVE)
 
 
 class Frame(IntEnum):
@@ -284,6 +288,7 @@ class FrameParser:
     def from_bytes(cls, value: Union[int, bytes]):
         if isinstance(value, int):
             value = bytes(bytearray([value]))
+            log.debug(f"Int gelesen: [{value}]")
         else:
             log.debug(f"Bytes gelesen: [{value}]")
         try:
@@ -292,7 +297,7 @@ class FrameParser:
             control = Control(data & 0x03)
             data_bit = bool(data & 0x08)
             service_bits = data >> 4
-            log.error(f"Frame: {frame}, {control}, {data_bit}, {service_bits}")
+            log.debug(f"Frame(frame={frame}, control={control}, data_bit={data_bit}, service={service_bits})")
             return cls(frame, control, data_bit, service_bits)
         except ValueError:
             return FrameParser(0, 0, 0, 0)
@@ -450,7 +455,7 @@ class DataReader(Thread):
         """
         Diese Funktion wird indirekt durch die Methode start() aufgerufen.
         """
-        log.info("Starte Zeitüberwachung")
+        log.debug("Starte Zeitüberwachung")
         self.timedelta_queue: Queue = timedaemon.start()
         log.info(f"Zyklus: {self.cycle}")
         self.get_important_values()
@@ -571,16 +576,16 @@ class Commands(Enum):
     off = b"off"
     reset = b"reset"
     ack = b"ack"
-    live = b"live"
+    live = b"LIVE"
 
 
 def command_loop():
     ctx = zmq.Context()
     sock = ctx.socket(zmq.SUB)
     sock.bind("tcp://127.0.0.1:4000")
-    sock.subscribe(Commands.topic.value)
     while True:
         topic, cmd = sock.recv_multipart()
+        print(f'Topic: {topic} Command: {cmd} Live-Value: {Commands.live.value}', flush=True)
         if cmd == Commands.on.value:
             log.info("Set Battery on")
             send_command(set_battery_on())
@@ -594,7 +599,8 @@ def command_loop():
             log.info("Send Ack")
             send_command(set_reset_alarm())
         elif cmd == Commands.live.value:
-            query_scheduler.switch(QueryScheduler.LIVE)
+            query_scheduler.live()
+            log.info('LIVE!')
 
 
 def send_command(frame):
@@ -642,7 +648,8 @@ def send(ser, frames):
                 req = FrameParser.from_bytes(frame)
                 rep = FrameParser.from_bytes(data)
 
-                log.info(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
+                log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
+
                 if req.is_reply(rep):
                     try:
                         values = rep.read_reply(ser)
@@ -724,7 +731,7 @@ def set_reset_battery() -> bytes:
     return query(Control.Set, service_bit=0x1, service_bits=8)
 
 
-basicConfig(level=INFO)
+basicConfig(level=DEBUG)
 log = getLogger("Server")
 sending = Semaphore()
 

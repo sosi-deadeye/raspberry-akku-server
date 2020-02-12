@@ -1,13 +1,12 @@
 import asyncio
+import base64
 import json
 import re
-import base64
 import threading
-
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from subprocess import call
-from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 import zmq
@@ -17,9 +16,8 @@ from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
-
+from gpiozero import Buzzer
 from pydantic import BaseModel, Field
-
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 from starlette.templating import Jinja2Templates
@@ -27,26 +25,22 @@ from starlette.templating import Jinja2Templates
 import current_values
 import database
 import errors
-import scan_wlan
-import wlanpw
-import wpa_passphrase
 import ispdb
 import notify
+import scan_wlan
 import statistiken
+import wlanpw
+import wpa_passphrase
 
-from gpiozero import Buzzer
-
-
+session = database.Session()
 templates = Jinja2Templates(directory='templates')
+
 app = FastAPI(
     title='LiFePo4-Akku',
     version='3.0.0',
     description='Rest API für des LiFePo4-Akkus',
     docs_url=None, redoc_url=None,
 )
-
-session = database.Session()
-CYCLE = database.get_cycle(session)
 
 
 class Hotspots(BaseModel):
@@ -131,30 +125,32 @@ def aktuelle_werte():
 def graph(request: Request):
     with graph_busy:
         cycle = database.get_cycle(session)
-        img = statistiken.plot(cycle, 2)
+        img = statistiken.plot(session, cycle, 2)
         return templates.TemplateResponse(
             'statistik.html',
             {
-              'request': request,
-              'base64_svg': base64.b64encode(img).decode(),
-              'cycle': cycle,
-              'history': 2
+                'request': request,
+                'base64_svg': base64.b64encode(img).decode(),
+                'cycle': cycle,
+                'history': 2
             }
         )
 
+
 @app.post('/graph')
-def graph(request: Request, cycle: int=Form(...), history: float=Form(...)):
+def graph(request: Request, cycle: int = Form(...), history: float = Form(...)):
     with graph_busy:
-        img = statistiken.plot(cycle, history)
+        img = statistiken.plot(session, cycle, history)
         return templates.TemplateResponse(
             'statistik.html',
             {
-              'request': request,
-              'base64_svg': base64.b64encode(img).decode(),
-              'cycle': cycle,
-              'history': history
+                'request': request,
+                'base64_svg': base64.b64encode(img).decode(),
+                'cycle': cycle,
+                'history': history
             }
         )
+
 
 @app.post('/api/shutdown')
 async def shutdown():
@@ -179,14 +175,14 @@ async def get_ap_pw(request: Request):
     return templates.TemplateResponse(
         'access_point.html',
         {
-        'request': request,
-        'password': password
+            'request': request,
+            'password': password
         }
     )
 
 
 @app.post('/api/set-ap-pw')
-async def reset_password(request: Request, password: str=Form(...)):
+async def reset_password(request: Request, password: str = Form(...)):
     try:
         wlanpw.set(password)
     except ValueError:
@@ -206,7 +202,7 @@ async def reset_password(request: Request, password: str=Form(...)):
 @app.get('/api/ispdb/{email}')
 async def get_isbdb_smtp(request: Request, email: str):
     task = loop.run_in_executor(executor, ispdb.get_smtp, email)
-    return await task
+    return task
 
 
 @app.get('/api/notify/{topic}')
@@ -234,10 +230,10 @@ async def get_wlan(request: Request):
 
 
 @app.post('/api/internet')
-async def set_wlan(request: Request, ssid: str=Form(...), password: str=Form(...)):
+async def set_wlan(request: Request, ssid: str = Form(...), password: str = Form(...)):
     try:
         wpa_passphrase.set_network(ssid, password)
-    except:
+    except ValueError:
         success = 'Passwort ist zu kurz.'
     else:
         success = 'SSID und Passwort sind erfolgreich gesetzt worden.'
@@ -278,14 +274,14 @@ async def get_email(request: Request):
 
 @app.post('/api/email')
 async def post_email(request: Request,
-    email_from: str=Form(...),
-    email_login: str=Form(''),
-    email_password: str=Form(...),
-    email_to: str=Form(...),
-    email_smtp_server: str=Form(''),
-    email_smtp_port: int=Form(0),
-    email_smtp_ssl: str=Form(False),
-    ):
+                     email_from: str = Form(...),
+                     email_login: str = Form(''),
+                     email_password: str = Form(...),
+                     email_to: str = Form(...),
+                     email_smtp_server: str = Form(''),
+                     email_smtp_port: int = Form(0),
+                     email_smtp_ssl: str = Form(False),
+                     ):
     smtp_settings = await loop.run_in_executor(executor, ispdb.get_smtp, email_from)
     if smtp_settings:
         if not email_login:
