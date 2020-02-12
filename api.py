@@ -101,7 +101,7 @@ def iwlist():
 
 
 @app.get("/api/aktuelle_werte", response_model=CurrentValues)
-def aktuelle_werte():
+def get_current_values():
     control.send_multipart([b'CONTROL', b'LIVE'])
     # values = database.get_current()
     # Werte via mmmap abrufen
@@ -113,12 +113,6 @@ def aktuelle_werte():
         values['charge_rel'] = 0
     values['errors'] = errors.get_short(values['error'])
     return values
-
-
-@app.get("/api/monitor")
-def aktuelle_werte():
-    control.send_multipart([b'CONTROL', b'MONITOR'])
-    return True
 
 
 @app.get('/graph')
@@ -379,12 +373,12 @@ async def redoc_html():
     )
 
 
-if __name__ == 'api':
+if __name__ in ('__main__', 'api'):
     ctx = zmq.Context()
+    # noinspection PyUnresolvedReferences
     control = ctx.socket(zmq.PUB)
     control.connect('tcp://127.0.0.1:4000')
     print('ZMQ started...')
-
-graph_busy = threading.Semaphore()
-executor = ThreadPoolExecutor(max_workers=2)
-loop = asyncio.get_event_loop()
+    graph_busy = threading.Semaphore()
+    executor = ThreadPoolExecutor(max_workers=2)
+    loop = asyncio.get_event_loop()

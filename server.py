@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
-import time
-import struct
-import statistics
 import mmap
+import statistics
+import struct
+import time
 from collections import deque
-from threading import Thread, Semaphore
-from typing import Union
 from datetime import datetime
 from enum import IntEnum, Enum
-from subprocess import call
-from logging import getLogger, basicConfig, INFO, DEBUG
+from logging import getLogger, basicConfig, DEBUG
 from queue import Queue
+from subprocess import call
+from threading import Thread, Semaphore
+from typing import Union, List, Tuple, Generator, Dict, Any
 
-import RPi.GPIO as gpio
+import RPi.GPIO as GPIO
 import serial
 import zmq
 
+import errors
+import notify
+import timedaemon
 from database import (
     Session,
     Configuration,
@@ -25,10 +29,6 @@ from database import (
     set_cycle,
     Statistik,
 )
-
-import notify
-import errors
-import timedaemon
 
 
 class QueryScheduler:
@@ -82,7 +82,6 @@ class QueryScheduler:
     def switch(self, mode):
         if mode == self.LIVE:
             self.normal_after = time.monotonic() + self.live_timeout
-            print(time.monotonic(), self.normal_after)
         if self.mode != mode:
             self.mode = mode
             self.waiting = self._next_in_waiting()
@@ -230,26 +229,26 @@ class FrameParser:
 
     def is_zero(self):
         return (
-            self.frame == 0
-            and self.control == 0
-            and self.data_bit == 0
-            and self.service_bits == 0
+                self.frame == 0
+                and self.control == 0
+                and self.data_bit == 0
+                and self.service_bits == 0
         )
 
-    def read_reply(self, serial):
+    def read_reply(self, serial_connection) -> Tuple:
         frame_type = self.frame_type["type"]
         if frame_type in (
-            Data.AnswerVoltage,
-            Data.AnswerCurrent,
-            Data.AnswerCharge,
-            Data.AnswerCapacity,
-            Data.AnswerTemperature,
+                Data.AnswerVoltage,
+                Data.AnswerCurrent,
+                Data.AnswerCharge,
+                Data.AnswerCapacity,
+                Data.AnswerTemperature,
         ):
-            values = struct.unpack("<f", serial.read(4))
+            values = struct.unpack("<f", serial_connection.read(4))
         elif frame_type is Data.AnswerCellVoltage:
-            values = struct.unpack("<Bf", serial.read(5))
+            values = struct.unpack("<Bf", serial_connection.read(5))
         elif frame_type is Fault.AnswerErrorFlags:
-            values = struct.unpack("<H", serial.read(2))
+            values = struct.unpack("<H", serial_connection.read(2))
         elif frame_type is Mode.AnswerSetOff:
             values = (False,)
         elif frame_type is Mode.AnswerSetOn:
@@ -257,22 +256,22 @@ class FrameParser:
         else:
             raise TypeError("No data is supplied by this Answer")
         if "constraints" in self.frame_type and not self.frame_type["constraints"](
-            values
+                values
         ):
             raise ValueError(f'Value "{values}" is not in allowed range')
         return values
 
-    def is_reply(self, other):
+    def is_reply(self, other) -> bool:
         if other.service_bits != 1:
             return (
-                self.frame == other.frame
-                and self.data_bit == other.data_bit
-                and self.service_bits == other.service_bits
+                    self.frame == other.frame
+                    and self.data_bit == other.data_bit
+                    and self.service_bits == other.service_bits
             )
         else:
             return self.frame == other.frame and self.service_bits == other.service_bits
 
-    def to_bytes(self):
+    def to_bytes(self) -> bytes:
         return bytes(
             bytearray(
                 [
@@ -285,7 +284,7 @@ class FrameParser:
         )
 
     @classmethod
-    def from_bytes(cls, value: Union[int, bytes]):
+    def from_bytes(cls, value: Union[int, bytes]) -> FrameParser:
         if isinstance(value, int):
             value = bytes(bytearray([value]))
             log.debug(f"Int gelesen: [{value}]")
@@ -300,20 +299,20 @@ class FrameParser:
             log.debug(f"Frame(frame={frame}, control={control}, data_bit={data_bit}, service={service_bits})")
             return cls(frame, control, data_bit, service_bits)
         except ValueError:
-            return FrameParser(0, 0, 0, 0)
+            return cls(0, 0, 0, 0)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return (
-            self.frame == other.frame
-            and self.control == other.control
-            and self.data_bit == other.data_bit
-            and self.service_bits == other.service_bits
+                self.frame == other.frame
+                and self.control == other.control
+                and self.data_bit == other.data_bit
+                and self.service_bits == other.service_bits
         )
 
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
         return self.to_bytes()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(frame={self.frame}, "
             f"control={self.control}, data_bit={self.data_bit}, "
@@ -322,8 +321,8 @@ class FrameParser:
 
 
 class DataReader(Thread):
-    def __init__(self, serial, queries, normal_interval=30, live_interval=0, cells=4):
-        self.ser = serial
+    def __init__(self, serial_connection, queries, normal_interval=30, live_interval=0, cells=4):
+        self.ser = serial_connection
         self.normal_interval = normal_interval
         self.live_interval = live_interval
         self.cells = cells
@@ -366,9 +365,10 @@ class DataReader(Thread):
         self.notified = False
         super().__init__()
 
-    def handle_error(self, error_flags: int):
-        # error_flags = 0x7330
-        # error_flags = 0xFFFF
+    def handle_error(self, error_flags: int) -> None:
+        """
+        Fehlerbehandlung
+        """
         if error_flags != self.last_error_flags:
             self.last_error_flags = error_flags
             self.current_values["error"] = error_flags
@@ -378,7 +378,7 @@ class DataReader(Thread):
                 self.last_error = error_text
                 Thread(target=notify.send_report, args=(error_text,)).start()
 
-    def create_mmap(self):
+    def create_mmap(self) -> None:
         """
         Format:
         5i: id, row, cycle, capacity, error
@@ -393,7 +393,7 @@ class DataReader(Thread):
             access=mmap.ACCESS_WRITE,
         )
 
-    def update_current_values(self):
+    def update_current_values(self) -> None:
         current_data = (
             self.row,
             self.row,
@@ -423,8 +423,8 @@ class DataReader(Thread):
             )
             diff, positive = self.timedelta_queue.get()
             # den Zyklus und alle Zeilen < self.row müssen aktualisiert werden
-            for stat in self.session.query(Statistik).filter(
-                Statistik.cycle == self.cycle, Statistik.row < self.row
+            for stat in self.session.make_query(Statistik).filter(
+                    Statistik.cycle == self.cycle, Statistik.row < self.row
             ):
                 if positive:
                     corrected_timestamp = stat.timestamp + diff
@@ -433,25 +433,35 @@ class DataReader(Thread):
                 stat.timestamp = corrected_timestamp
                 self.session.merge(stat)
 
-    def get_important_values(self):
+    def get_important_values(self) -> None:
         """
         Frage Kapazität, Status und Ladung ab
         """
         log.info("Frage Kapazität ab")
-        for description, (capacity, *_) in send(self.ser, [query_capacity()]):
+        while True:
+            result = send_one_frame(query_capacity())
+            if result is None:
+                continue
+            description, (capacity, *_) = result
             log.info(f"Kapazität ist {capacity:.0f} Ah")
             self.capacity = capacity
             self.current_values["capacity"] = capacity
+            break
         self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
         # Query nur einmal senden
         # wird noch nicht ausgewertet
         self.ser.write(query_battery_on())
         values = [self.capacity]
-        for frame_type, values in send(self.ser, [query_load()]):
+        while True:
+            result = send_one_frame(query_load())
+            if not result:
+                continue
+            frame_type, values = result
             self.current_values["charge"] = values[0]
+            break
         log.info(f"Ladung beträgt {values[0]:.0f} Ah.")
 
-    def run(self):
+    def run(self) -> None:
         """
         Diese Funktion wird indirekt durch die Methode start() aufgerufen.
         """
@@ -500,14 +510,14 @@ class DataReader(Thread):
                     "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
                 )
                 log.warning(f"Achtung Ladung: {relative_load:.1f} %")
-                gpio.setup(5, gpio.OUT)
-                gpio.output(5, True)
+                GPIO.setup(5, GPIO.OUT)
+                GPIO.output(5, True)
                 time.sleep(2)
-                gpio.output(5, False)
+                GPIO.output(5, False)
                 time.sleep(1)
-                gpio.output(5, True)
+                GPIO.output(5, True)
                 time.sleep(2)
-                gpio.output(5, False)
+                GPIO.output(5, False)
                 call(["shutdown", "-h", "0"])
 
     def database_insert(self) -> None:
@@ -532,9 +542,9 @@ class DataReader(Thread):
             self.row += 1
             self.db_next_update = time.monotonic() + self.db_update_interval
 
-    def handle_query(self, query):
+    def handle_query(self, query: Union[bytes, None]):
         if query:
-            for frame_type, values in send(ser, query):
+            for frame_type, values in send_many_frame(query):
                 frame_type = frame_type["type"]
                 if frame_type is Data.AnswerVoltage:
                     self.current_values["voltage"] = values[0]
@@ -564,9 +574,9 @@ class DataReader(Thread):
     def discard_old_cycles(self) -> None:
         session = self.session
         cycle = 1
-        while session.query(Statistik).count() > 1_000_000:
+        while session.make_query(Statistik).count() > 1_000_000:
             log.info(f"Lösche Zyklus {cycle}")
-            session.query(Statistik).filter(Statistik.cycle == cycle).delete()
+            session.make_query(Statistik).filter(Statistik.cycle == cycle).delete()
             cycle += 1
 
 
@@ -579,91 +589,106 @@ class Commands(Enum):
     live = b"LIVE"
 
 
-def command_loop():
+def command_loop() -> None:
     ctx = zmq.Context()
+    # noinspection PyUnresolvedReferences
     sock = ctx.socket(zmq.SUB)
     sock.bind("tcp://127.0.0.1:4000")
+    sock.subscribe(Commands.topic.value)
     while True:
         topic, cmd = sock.recv_multipart()
-        print(f'Topic: {topic} Command: {cmd} Live-Value: {Commands.live.value}', flush=True)
         if cmd == Commands.on.value:
             log.info("Set Battery on")
-            send_command(set_battery_on())
+            send_one_frame(set_battery_on())
         elif cmd == Commands.off.value:
             log.info("Set Battery off")
-            send_command(set_battery_off())
+            send_one_frame(set_battery_off())
         elif cmd == Commands.reset.value:
             log.info("Reset battery")
-            send_command(set_reset_battery())
+            send_one_frame(set_reset_battery())
         elif cmd == Commands.ack.value:
             log.info("Send Ack")
-            send_command(set_reset_alarm())
+            send_one_frame(set_reset_alarm())
         elif cmd == Commands.live.value:
             query_scheduler.live()
-            log.info('LIVE!')
 
 
-def send_command(frame):
-    with sending:
-        while True:
-            if gpio.input(TXD_SENSE):
-                break
-            time.sleep(1)
-        gpio.output(TXD_EN, False)
-        gpio.wait_for_edge(RXD_SENSE, gpio.RISING)
-        while True:
-            time.sleep(0.3)
-            ser.reset_input_buffer()
-            ser.write(frame)
-            data = ser.read(1)
-            print("XX", end="", flush=True)
-            req = FrameParser.from_bytes(frame)
-            rep = FrameParser.from_bytes(data)
-            if req.is_reply(rep):
-                break
-        gpio.output(TXD_EN, True)
+# def send_command(frame: bytes) -> None:
+#     with sending:
+#         while True:
+#             if gpio.input(TXD_SENSE):
+#                 break
+#             time.sleep(1)
+#         gpio.output(TXD_EN, False)
+#         gpio.wait_for_edge(RXD_SENSE, gpio.RISING)
+#         while True:
+#             time.sleep(0.3)
+#             ser.reset_input_buffer()
+#             ser.write(frame)
+#             data = ser.read(1)
+#             print("XX", end="", flush=True)
+#             req = FrameParser.from_bytes(frame)
+#             rep = FrameParser.from_bytes(data)
+#             if req.is_reply(rep):
+#                 break
+#         gpio.output(TXD_EN, True)
 
 
-def txd_sense_wait():
+def txd_sense_wait() -> None:
     while True:
-        if gpio.wait_for_edge(TXD_SENSE, gpio.FALLING, timeout=10000) is None:
+        if GPIO.wait_for_edge(TXD_SENSE, GPIO.FALLING, timeout=10000) is None:
             break
 
 
-def send(ser, frames):
+def send_one_frame(frame: bytes, tx_lock: bool = True, retries=3) -> Tuple[Dict, Tuple[Any]]:
     with sending:
-        txd_sense_wait()
-        gpio.output(TXD_EN, False)
-        for frame in frames:
-            time.sleep(0.1)
-            while True:
-                ser.reset_input_buffer()
+        if tx_lock:
+            txd_sense_wait()
+            GPIO.output(TXD_EN, False)
+        for _ in range(retries):
+            ser.reset_input_buffer()
 
-                ser.write(frame)
-                # print('T', end='', flush=True)
+            ser.write(frame)
+            # print('T', end='', flush=True)
 
-                data = ser.read(1)
-                # print('R', end='', flush=True)
+            data = ser.read(1)
+            # print('R', end='', flush=True)
 
-                req = FrameParser.from_bytes(frame)
-                rep = FrameParser.from_bytes(data)
+            req = FrameParser.from_bytes(frame)
+            rep = FrameParser.from_bytes(data)
 
-                log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
+            log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
 
-                if req.is_reply(rep):
-                    try:
-                        values = rep.read_reply(ser)
-                    except (TypeError, ValueError) as e:
-                        log.critical(f"{e} {rep}")
-                    else:
-                        yield rep.frame_type, values
-                        break
-        gpio.output(TXD_EN, True)
+            if req.is_reply(rep):
+                try:
+                    values = rep.read_reply(ser)
+                except (TypeError, ValueError) as e:
+                    log.critical(f"{e} {rep}")
+                else:
+                    return rep.frame_type, values
+        if tx_lock:
+            GPIO.output(TXD_EN, True)
 
 
-def query(qtype, service_bit=0, service_bits=0, databytes=None) -> bytes:
+def send_many_frame(frames) -> Generator[Tuple[Enum, Tuple], None, None]:
+    """
+    Mehrere Anfragen aufeinmal an den Akku senden.
+    """
+    txd_sense_wait()
+    GPIO.output(TXD_EN, False)
+    for frame in frames:
+        yield send_one_frame(frame, tx_lock=False)
+    GPIO.output(TXD_EN, True)
+
+
+def make_query(
+        query_type: int,
+        service_bit: int = 0,
+        service_bits: int = 0,
+        databytes: Union[None, bytes] = None
+) -> bytes:
     packet = 1
-    packet |= qtype << 1
+    packet |= query_type << 1
     packet |= service_bit << 3
     packet |= service_bits << 4
     data = bytearray([packet])
@@ -673,78 +698,77 @@ def query(qtype, service_bit=0, service_bits=0, databytes=None) -> bytes:
 
 
 def query_battery_on() -> bytes:
-    return query(Control.Query, service_bits=1)
+    return make_query(Control.Query, service_bits=1)
 
 
 def set_battery_off() -> bytes:
-    return query(Control.Set, service_bits=1)
+    return make_query(Control.Set, service_bits=1)
 
 
 def set_battery_on() -> bytes:
-    return query(Control.Set, service_bit=0x1, service_bits=1)
+    return make_query(Control.Set, service_bit=0x1, service_bits=1)
 
 
 def query_voltage() -> bytes:
-    return query(Control.Query, service_bit=0x0, service_bits=4)
+    return make_query(Control.Query, service_bit=0x0, service_bits=4)
 
 
 def query_current() -> bytes:
-    return query(Control.Query, service_bit=0x1, service_bits=4)
+    return make_query(Control.Query, service_bit=0x1, service_bits=4)
 
 
 def query_load() -> bytes:
-    return query(Control.Query, service_bit=0x0, service_bits=6)
+    return make_query(Control.Query, service_bit=0x0, service_bits=6)
 
 
 def query_capacity() -> bytes:
-    return query(Control.Query, service_bit=0x1, service_bits=6)
+    return make_query(Control.Query, service_bit=0x1, service_bits=6)
 
 
 def query_cell_voltage(cell_id) -> bytes:
-    return query(
+    return make_query(
         Control.Query, service_bit=0x0, service_bits=7, databytes=bytearray([cell_id])
     )
 
 
 def query_configuration() -> bytes:
-    return query(Control.Query, service_bit=0x0, service_bits=10)
+    return make_query(Control.Query, service_bit=0x0, service_bits=10)
 
 
 def query_error_flags() -> bytes:
-    return query(Control.Query, service_bit=0x0, service_bits=9)
+    return make_query(Control.Query, service_bit=0x0, service_bits=9)
 
 
 def query_error_history(area) -> bytes:
     data = struct.pack("<H", area)
-    return query(Control.Query, service_bit=0x0, service_bits=9, databytes=data)
+    return make_query(Control.Query, service_bit=0x0, service_bits=9, databytes=data)
 
 
 def query_cell_temperature() -> bytes:
-    return query(Control.Query, service_bit=0x1, service_bits=7)
+    return make_query(Control.Query, service_bit=0x1, service_bits=7)
 
 
 def set_reset_alarm() -> bytes:
-    return query(Control.Set, service_bit=0x0, service_bits=8)
+    return make_query(Control.Set, service_bit=0x0, service_bits=8)
 
 
 def set_reset_battery() -> bytes:
-    return query(Control.Set, service_bit=0x1, service_bits=8)
+    return make_query(Control.Set, service_bit=0x1, service_bits=8)
 
 
 basicConfig(level=DEBUG)
 log = getLogger("Server")
 sending = Semaphore()
 
-
 if __name__ == "__main__":
-    gpio.setwarnings(False)
-    gpio.setmode(gpio.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
     TXD_EN = 17
     TXD_SENSE = 22
     RXD_SENSE = 27
-    gpio.setup(TXD_EN, gpio.OUT, initial=gpio.HIGH)  # /Transmit Data Enable
-    gpio.setup(RXD_SENSE, gpio.IN, pull_up_down=gpio.PUD_DOWN)  # Receive Data Sense
-    gpio.setup(TXD_SENSE, gpio.IN, pull_up_down=gpio.PUD_UP)  # /Transmit Data Sense
+    GPIO.setup(TXD_EN, GPIO.OUT, initial=GPIO.HIGH)  # /Transmit Data Enable
+    GPIO.setup(RXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Receive Data Sense
+    GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
     ser = serial.Serial(
         "/dev/serial0",
         baudrate=1000,
@@ -753,14 +777,7 @@ if __name__ == "__main__":
         stopbits=serial.STOPBITS_ONE,
     )
 
-    # def txd_en_off(*args):
-    #     gpio.output(TXD_EN, True)
-    #     old_signal()
-    #
-    # atexit.register(txd_en_off)
-    # old_signal = signal.signal(signal.SIGTERM, txd_en_off)
-
-    queries_normal = [
+    QUERIES_NORMAL: List[bytes, int] = [
         (query_voltage(), 60),
         (query_current(), 10),
         (query_load(), 60),
@@ -769,7 +786,7 @@ if __name__ == "__main__":
         (query_error_flags(), 60),
     ]
 
-    queries_live = [
+    QUERIES_LIVE: List[bytes, int] = [
         (query_voltage(), 15),
         (query_current(), 2),
         (query_load(), 60),
@@ -779,7 +796,7 @@ if __name__ == "__main__":
     ]
 
     log.debug("Starte QueryScheduler")
-    query_scheduler = QueryScheduler(queries_normal, queries_live)
+    query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
 
     # starte Thread mit einem zmq subscriber,
     # der lediglich Befehle an den Akku sendet
