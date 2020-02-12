@@ -21,7 +21,7 @@ from fastapi.openapi.docs import (
 from pydantic import BaseModel, Field
 
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import StreamingResponse
 from starlette.templating import Jinja2Templates
 
 import current_values
@@ -45,7 +45,8 @@ app = FastAPI(
     docs_url=None, redoc_url=None,
 )
 
-CYCLE = database.get_cycle()
+session = database.Session()
+CYCLE = database.get_cycle(session)
 
 
 class Hotspots(BaseModel):
@@ -129,7 +130,7 @@ def aktuelle_werte():
 @app.get('/graph')
 def graph(request: Request):
     with graph_busy:
-        cycle = database.get_cycle()
+        cycle = database.get_cycle(session)
         img = statistiken.plot(cycle, 2)
         return templates.TemplateResponse(
             'statistik.html',

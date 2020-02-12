@@ -19,7 +19,6 @@ import zmq
 
 from database import (
     Session,
-    session,
     Configuration,
     Error,
     State,
@@ -310,7 +309,11 @@ class FrameParser:
         return self.to_bytes()
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(frame={self.frame}, control={self.control}, data_bit={self.data_bit}, service_bits={self.service_bits})"
+        return (
+            f"{self.__class__.__name__}(frame={self.frame}, "
+            f"control={self.control}, data_bit={self.data_bit}, "
+            f"service_bits={self.service_bits})"
+        )
 
 
 class DataReader(Thread):
@@ -321,6 +324,7 @@ class DataReader(Thread):
         self.cells = cells
         self.queries = queries
         self.session = Session()
+        self.cycle = set_cycle(self.session)
         self.capacity = None
         self.last_error = None
         self.last_error_flags = None
@@ -346,6 +350,9 @@ class DataReader(Thread):
             "cell_voltages": [0.0] * self.cells,
             "error": 0,
         }
+        self._current_values_st = struct.Struct("<5i9f")
+        self._fd = None
+        self._mmap = None
         self.create_mmap()
         self.db_update_interval = 60
         self.db_next_update = time.monotonic() + 120
@@ -360,7 +367,7 @@ class DataReader(Thread):
         if error_flags != self.last_error_flags:
             self.last_error_flags = error_flags
             self.current_values["error"] = error_flags
-            self.session.add(Error(row=self.row, cycle=CYCLE, error=error_flags))
+            self.session.add(Error(row=self.row, cycle=self.cycle, error=error_flags))
             error_text = errors.get_msg(error_flags, err_topics=self.error_topics)
             if error_text and error_text != self.last_error:
                 self.last_error = error_text
@@ -372,7 +379,6 @@ class DataReader(Thread):
         5i: id, row, cycle, capacity, error
         9f: voltage, current, charge, temperature, timestamp, 4 x cell_voltages
         """
-        self._current_values_st = struct.Struct("<5i9f")
         with open("/media/data/current_values.bin", "wb") as fd:
             fd.write(b"\x00" * self._current_values_st.size)
         self._fd = open("/media/data/current_values.bin", "r+b")
@@ -386,7 +392,7 @@ class DataReader(Thread):
         current_data = (
             self.row,
             self.row,
-            CYCLE,
+            self.cycle,
             int(self.current_values["capacity"]),
             self.current_values["error"],
             self.current_values["voltage"],
@@ -408,12 +414,12 @@ class DataReader(Thread):
         """
         if not self.timedelta_queue.empty():
             log.info(
-                f"Die Systemzeit hat sich geändert. Aktualisiere die Daten aus dem Zyklus {CYCLE}"
+                f"Die Systemzeit hat sich geändert. Aktualisiere die Daten aus dem Zyklus {self.cycle}"
             )
             diff, positive = self.timedelta_queue.get()
             # den Zyklus und alle Zeilen < self.row müssen aktualisiert werden
             for stat in self.session.query(Statistik).filter(
-                Statistik.cycle == CYCLE, Statistik.row < self.row
+                Statistik.cycle == self.cycle, Statistik.row < self.row
             ):
                 if positive:
                     corrected_timestamp = stat.timestamp + diff
@@ -431,14 +437,14 @@ class DataReader(Thread):
             log.info(f"Kapazität ist {capacity:.0f} Ah")
             self.capacity = capacity
             self.current_values["capacity"] = capacity
-        self.session.add(Configuration(capacity=self.capacity, cycle=CYCLE))
+        self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
         # Query nur einmal senden
         # wird noch nicht ausgewertet
         self.ser.write(query_battery_on())
         values = [self.capacity]
         for frame_type, values in send(self.ser, [query_load()]):
             self.current_values["charge"] = values[0]
-        log.info(f"Ladung beträgt {values[0]:.0f} V.")
+        log.info(f"Ladung beträgt {values[0]:.0f} Ah.")
 
     def run(self):
         """
@@ -446,7 +452,7 @@ class DataReader(Thread):
         """
         log.info("Starte Zeitüberwachung")
         self.timedelta_queue: Queue = timedaemon.start()
-        log.info(f"Zyklus: {CYCLE}")
+        log.info(f"Zyklus: {self.cycle}")
         self.get_important_values()
         log.info("Betrete Endlosschleife")
         while True:
@@ -515,7 +521,7 @@ class DataReader(Thread):
                 current_values["current"] = current_mean
             del current_values["capacity"]  # this key is in a different table
             del current_values["error"]  # this also
-            dataset = Statistik(cycle=CYCLE, row=self.row, **current_values)
+            dataset = Statistik(cycle=self.cycle, row=self.row, **current_values)
             self.session.add(dataset)
             self.session.commit()
             self.row += 1
@@ -543,12 +549,20 @@ class DataReader(Thread):
                 elif frame_type is Fault.AnswerErrorFlags:
                     self.handle_error(values[0])
                 elif frame_type is Mode.AnswerSetOff:
-                    self.session.add(State(cycle=CYCLE, row=self.row, onoff=False))
+                    self.session.add(State(cycle=self.cycle, row=self.row, onoff=False))
                 elif frame_type is Mode.AnswerSetOn:
-                    self.session.add(State(cycle=CYCLE, row=self.row, onoff=True))
+                    self.session.add(State(cycle=self.cycle, row=self.row, onoff=True))
             self.update_current_values()
             self.database_insert()
             self.check_alert()
+
+    def discard_old_cycles(self) -> None:
+        session = self.session
+        cycle = 1
+        while session.query(Statistik).count() > 1_000_000:
+            log.info(f"Lösche Zyklus {cycle}")
+            session.query(Statistik).filter(Statistik.cycle == cycle).delete()
+            cycle += 1
 
 
 class Commands(Enum):
@@ -710,22 +724,12 @@ def set_reset_battery() -> bytes:
     return query(Control.Set, service_bit=0x1, service_bits=8)
 
 
-def discard_old_cycles() -> None:
-    cycle = 1
-    while session.query(Statistik).count() > 1_000_000:
-        log.info(f"Lösche Zyklus {cycle}")
-        session.query(Statistik).filter(Statistik.cycle == cycle).delete()
-        cycle += 1
-
-
 basicConfig(level=INFO)
 log = getLogger("Server")
 sending = Semaphore()
 
 
 if __name__ == "__main__":
-    CYCLE = set_cycle()
-    discard_old_cycles()
     gpio.setwarnings(False)
     gpio.setmode(gpio.BCM)
     TXD_EN = 17

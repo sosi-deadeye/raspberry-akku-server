@@ -68,7 +68,7 @@ class Statistik(Base):
 
 
 Base.metadata.create_all(engine)
-session = Session()
+# session = Session()
 
 
 def to_dict(obj):
@@ -127,15 +127,15 @@ def get_error(cycle):
     return data.error if data else 0
 
 
-def get_cycle():
+def get_cycle(session):
     cycle = session.query(Cycle.cycle).order_by(desc('id')).first()
     if cycle:
        return cycle[0]
     return 0
 
 
-def set_cycle():
-    cycle_id = get_cycle() + 1
+def set_cycle(session):
+    cycle_id = get_cycle(session) + 1
     session.add(Cycle(cycle=cycle_id))
     session.commit()
     return cycle_id
