@@ -24,7 +24,6 @@ from database import (
     Error,
     State,
     set_cycle,
-    delete_old_cycles,
     Statistik,
 )
 
