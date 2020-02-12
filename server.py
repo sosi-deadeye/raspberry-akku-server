@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
-# import atexit
 import time
-# import signal
 import struct
 import statistics
-# import sys
 import mmap
 from collections import deque
 from threading import Thread, Semaphore
+from typing import Union
 from datetime import datetime
 from enum import IntEnum, Enum
 from subprocess import call
-from logging import getLogger, basicConfig, DEBUG, INFO, WARNING
+from logging import getLogger, basicConfig, INFO
 from queue import Queue
 
 import RPi.GPIO as gpio
@@ -34,13 +32,33 @@ class QueryScheduler:
     NORMAL = 'normal'
     LIVE = 'live'
 
-    def __init__(self, queries_normal, queries_live):
+    def __init__(self, queries_normal, queries_live, live_timeout=10):
         self.mode = self.NORMAL
         self.queries_normal = queries_normal
         self.queries_live = queries_live
-        self.waiting = self._in_waiting()
-        self.live_timeout = 10
+        # first all normal queries are waiting
+        self.waiting = [(query, freq, 0) for (query, freq) in queries_normal]
+        self.live_timeout = live_timeout
         self.normal_after = time.monotonic()
+
+    def _next_in_waiting(self):
+        if self.mode == self.NORMAL:
+            queries = self.queries_normal
+        elif self.mode == self.LIVE:
+            queries = self.queries_live
+        else:
+            return []
+        return [(query, freq, time.monotonic() + freq) for query, freq in queries]
+
+    def _next_in_queue(self):
+        return [
+            (
+                query,
+                freq,
+                time.monotonic() + freq if time.monotonic() > after else after,
+            )
+            for query, freq, after in self.waiting
+        ]
 
     def __iter__(self):
         return self
@@ -50,32 +68,16 @@ class QueryScheduler:
             log.info('Switching back to normal mode')
             self.switch(self.NORMAL)
         current_queries = [bytes(query) for (query, freq, after) in self.waiting if time.monotonic() > after]
-        self.waiting = [
-            (
-                query,
-                freq,
-                time.monotonic() + freq if time.monotonic() > after else after,
-            )
-            for query, freq, after in self.waiting
-        ]
+        self.waiting = self._next_in_queue()
         # log.info(current_queries)
         return current_queries
-
-    def _in_waiting(self):
-        if self.mode == self.NORMAL:
-            queries = self.queries_normal
-        elif self.mode == self.LIVE:
-            queries = self.queries_live
-        else:
-            return []
-        return [(query, freq, time.monotonic() + freq) for query, freq in queries]
 
     def switch(self, mode):
         if mode == self.LIVE:
             self.normal_after = time.monotonic() + self.live_timeout
         if self.mode != mode:
             self.mode = mode
-            self.waiting = self._in_waiting()
+            self.waiting = self._next_in_waiting()
             if mode == self.LIVE:
                 log.info(f'Switch mode to {mode}')
 
@@ -90,6 +92,7 @@ class Control(IntEnum):
     Query = 0x2
     Answer = 0x3
 
+
 class Mode(Enum):
     QueryOnOff = 'Anfrage Akku Ein/Aus'
     AnswerOn = 'Antwort Akku An'
@@ -98,6 +101,7 @@ class Mode(Enum):
     AnswerSetOff = 'Bestätigung Akku Aus'
     SetOn = 'Befehl Akku Ein'
     AnswerSetOn = 'Bestätigung Akku Ein'
+
 
 class Data(Enum):
     QueryVoltage = 'Anfrage Spannung'
@@ -232,15 +236,18 @@ class FrameParser:
         return bytes(bytearray([self.frame | self.control << 1 | self.data_bit << 3 | self.service_bits << 4]))
 
     @classmethod
-    def from_bytes(cls, raw_byte):
-        if isinstance(raw_byte, int):
-            raw_byte = bytes(bytearray([raw_byte]))
+    def from_bytes(cls, value: Union[int, bytes]):
+        if isinstance(value, int):
+            value = bytes(bytearray([value]))
+        else:
+            log.debug(f'Bytes gelesen: [{value}]')
         try:
-            data = raw_byte[0]
+            data = value[0]
             frame = Frame(data & 0x1)
             control = Control(data & 0x03)
             data_bit = bool(data & 0x08)
             service_bits = data >> 4
+            log.error(f'Frame: {frame}, {control}, {data_bit}, {service_bits}')
             return cls(frame, control, data_bit, service_bits)
         except ValueError:
             return FrameParser(0, 0, 0, 0)
@@ -284,6 +291,8 @@ class DataReader(Thread):
         self.db_update_interval = 60
         self.db_next_update = time.monotonic() + 120
         self.stats_current = deque(maxlen=4)
+        self.timedelta_queue: Union[None, Queue] = None
+        self.notified = False
         super().__init__()
 
     def handle_error(self, error_flags: int):
@@ -308,7 +317,11 @@ class DataReader(Thread):
         with open('/media/data/current_values.bin', 'wb') as fd:
             fd.write(b'\x00' * self._current_values_st.size)
         self._fd = open('/media/data/current_values.bin', 'r+b')
-        self._mmap = mmap.mmap(self._fd.fileno(), self._current_values_st.size, prot=mmap.PROT_WRITE)
+        self._mmap = mmap.mmap(
+            fileno=self._fd.fileno(),
+            length=self._current_values_st.size,
+            access=mmap.ACCESS_WRITE
+        )
 
     def update_current_values(self):
         current_data = (
@@ -330,9 +343,28 @@ class DataReader(Thread):
             *current_data,
         )
 
-    def run(self):
-        self.notified = False
-        log.info(f'Zyklus: {CYCLE}')
+    def check_timedelta(self) -> None:
+        """
+        Prüfe ob es Sprünge in der Zeit gab.
+
+        Anschließende Korrektur der Zeitstempel.
+        """
+        if not self.timedelta_queue.empty():
+            log.info(f'Die Systemzeit hat sich geändert. Aktualisiere die Daten aus dem Zyklus {CYCLE}')
+            diff, positive = self.timedelta_queue.get()
+            # den Zyklus und alle Zeilen < self.row müssen aktualisiert werden
+            for stat in self.session.query(Statistik).filter(Statistik.cycle == CYCLE, Statistik.row < self.row):
+                if positive:
+                    corrected_timestamp = stat.timestamp + diff
+                else:
+                    corrected_timestamp = stat.timestamp - diff
+                stat.timestamp = corrected_timestamp
+                self.session.merge(stat)
+
+    def get_important_values(self):
+        """
+        Frage Kapazität, Status und Ladung ab
+        """
         log.info('Frage Kapazität ab')
         for description, (capacity, *_) in send(self.ser, [query_capacity()]):
             log.info(f'Kapazität ist {capacity:.0f} Ah')
@@ -342,113 +374,147 @@ class DataReader(Thread):
         # Query nur einmal senden
         # wird noch nicht ausgewertet
         self.ser.write(query_battery_on())
+        values = [self.capacity]
         for frame_type, values in send(self.ser, [query_load()]):
             self.current_values['charge'] = values[0]
-        print('LOAD:', values[0])
-        timedelta_queue: Queue = timedaemon.start()
+        log.info(f'Ladung beträgt {values[0]:.0f} V.')
+
+    def run(self):
+        """
+        Diese Funktion wird indirekt durch die Methode start() aufgerufen.
+        """
+        log.info('Starte Zeitüberwachung')
+        self.timedelta_queue: Queue = timedaemon.start()
+        log.info(f'Zyklus: {CYCLE}')
+        self.get_important_values()
+        log.info('Betrete Endlosschleife')
         while True:
-            # Korrektur der Zeitstempel nach dem die Datum und Zeit
-            # geändert worden ist
-            if not timedelta_queue.empty():
-                log.info(f'Die Systemzeit hat sich geändert. Aktualisiere die Daten aus dem Zyklus {CYCLE}')
-                diff, positive = timedelta_queue.get()
-                # den Zyklus und alle Zeilen < self.row müssen aktualisiert werden
-                for stat in self.session.query(Statistik).filter(Statistik.cycle == CYCLE, Statistik.row < self.row):
-                    if positive:
-                        corrected_timestamp = stat.timestamp + diff
-                    else:
-                        corrected_timestamp = stat.timestamp - diff
-                    stat.timestamp = corrected_timestamp
-                    self.session.merge(stat)
+            # Prüfe ob sich die Zeit geändert hat
+            # und führe Korrekturen aus
+            self.check_timedelta()
+
+            # Nächsten query anfordern
             query = next(self.queries)
-            if query:
-                for frame_type, values in send(ser, query):
-                    frame_type = frame_type['type']
-                    if frame_type is Data.AnswerVoltage:
-                        self.current_values['voltage'] = values[0]
-                    elif frame_type is Data.AnswerCurrent:
-                        self.current_values['current'] = values[0]
-                        self.stats_current.append(values[0])
-                    elif frame_type is Data.AnswerCharge:
-                        self.current_values['charge'] = values[0]
-                    elif frame_type is Data.AnswerTemperature:
-                        self.current_values['temperature'] = values[0]
-                    elif frame_type is Data.AnswerCellVoltage:
-                        self.current_values['cell_voltages'][values[0]] = values[1]
-                    elif frame_type is Fault.AnswerErrorFlags:
-                        self.handle_error(values[0])
-                    elif frame_type is Mode.AnswerSetOff:
-                        self.session.add(State(cycle=CYCLE, row=self.row, onoff=False))
-                    elif frame_type is Mode.AnswerSetOn:
-                        self.session.add(State(cycle=CYCLE, row=self.row, onoff=False))
-                self.update_current_values()
-                # log.info(current_values)
+
+            # Query verarbeiten
+            self.handle_query(query)
+
+            # 100 ms warten.
+            time.sleep(0.1)
+
+    def check_alert(self) -> None:
+        """
+        Prüfe ob die Ladung unter 10% ist.
+        (Ladung kann auch negativ sein.)
+
+        Ladung unter 15% ist -> E-Mail versenden
+        Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
+        """
+        if self.current_values['charge'] and self.capacity:
+            relative_load = (self.current_values['charge'] / self.capacity) * 100
+            # log.info(f'Relative Ladung {relative_load}')
+            if not self.notified and 10 < relative_load < 15:
+                log.warning('Ladung unter 15%. E-Mail wird gesendet.')
+                notify_thread = Thread(
+                    target=notify.send_report,
+                    args=('Die Ladung des Akkus liegt zwuschen 10 und 15%. Bitte nachladen.',)
+                )
+                notify_thread.start()
+                self.notified = True
+            elif relative_load < 10:
+                notify.send_report('Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren.')
+                log.warning(f'Achtung Ladung: {relative_load:.1f} %')
+                gpio.setup(5, gpio.OUT)
+                gpio.output(5, True)
+                time.sleep(2)
+                gpio.output(5, False)
+                time.sleep(1)
+                gpio.output(5, True)
+                time.sleep(2)
+                gpio.output(5, False)
+                call(['shutdown', '-h', '0'])
+
+    def database_insert(self) -> None:
+        """
+        Prüfe ob nächster Datenbankeintrag fällig ist.
+        Falls ja, Daten speichern und Timer neu setzen.
+        """
+        if time.monotonic() > self.db_next_update:
+            log.info(f'Speichere Datensatz {self.row} in der Datenbank')
+            current_values = self.current_values.copy()
+            try:
+                current_mean = statistics.mean(self.stats_current)
+            except statistics.StatisticsError:
+                pass
+            else:
+                current_values['current'] = current_mean
+            del current_values['capacity']  # this key is in a different table
+            del current_values['error']     # this also
+            dataset = Statistik(cycle=CYCLE, row=self.row, **current_values)
+            self.session.add(dataset)
+            self.session.commit()
+            self.row += 1
+            self.db_next_update = time.monotonic() + self.db_update_interval
+
+    def handle_query(self, query):
+        if query:
+            for frame_type, values in send(ser, query):
+                frame_type = frame_type['type']
+                if frame_type is Data.AnswerVoltage:
+                    self.current_values['voltage'] = values[0]
+                elif frame_type is Data.AnswerCurrent:
+                    self.current_values['current'] = values[0]
+                    self.stats_current.append(values[0])
+                elif frame_type is Data.AnswerCharge:
+                    self.current_values['charge'] = values[0]
+                elif frame_type is Data.AnswerTemperature:
+                    self.current_values['temperature'] = values[0]
+                elif frame_type is Data.AnswerCellVoltage:
+                    cell_id, cell_voltage = values
+                    try:
+                        self.current_values['cell_voltages'][cell_id] = cell_voltage
+                    except IndexError:
+                        log.error(f'Zellen-Index {cell_id} ist ungültig')
+                elif frame_type is Fault.AnswerErrorFlags:
+                    self.handle_error(values[0])
+                elif frame_type is Mode.AnswerSetOff:
+                    self.session.add(State(cycle=CYCLE, row=self.row, onoff=False))
+                elif frame_type is Mode.AnswerSetOn:
+                    self.session.add(State(cycle=CYCLE, row=self.row, onoff=True))
+            self.update_current_values()
+            self.database_insert()
+            self.check_alert()
 
 
-            # database insert
-            if time.monotonic() > self.db_next_update:
-                log.info(f'Saving row {self.row} in database')
-                current_values = self.current_values.copy()
-                try:
-                    current_mean = statistics.mean(self.stats_current)
-                except statistics.StatisticsError:
-                    pass
-                else:
-                    current_values['current'] = current_mean
-                del current_values['capacity']  # this key is in a different table
-                del current_values['error']  # this also
-                dataset = Statistik(cycle=CYCLE, row=self.row, **current_values)
-                self.session.add(dataset)
-                self.session.commit()
-                self.row += 1
-                self.db_next_update = time.monotonic() + self.db_update_interval
-
-            if self.current_values['charge']:
-                relative_load = (self.current_values['charge'] / self.capacity) * 100
-                # log.info(f'Relative Ladung {relative_load}')
-                if not self.notified and 10 < relative_load < 15:
-                    log.warning('Ladung unter 15%. E-Mail wird gesendet.')
-                    notify_thread = Thread(
-                        target=notify.send_report,
-                        args=('Die Ladung des Akkus liegt zwuschen 10 und 15%. Bitte nachladen.',)
-                    )
-                    notify_thread.start()
-                    self.notified = True
-                elif relative_load < 10:
-                    notify.send_report('Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren.')
-                    log.warning(f'Achtung Ladung: {relative_load:.1f} %')
-                    gpio.setup(5, gpio.OUT)
-                    gpio.output(5, True)
-                    time.sleep(2)
-                    gpio.output(5, False)
-                    time.sleep(1)
-                    gpio.output(5, True)
-                    time.sleep(2)
-                    gpio.output(5, False)
-                    call(['shutdown', '-h', '0'])
-            time.sleep(0.01)
+class Commands(Enum):
+    topic = b'CONTROL'
+    on = b'on'
+    off = b'off'
+    reset = b'reset'
+    ack = b'ack'
+    live = b'live'
 
 
 def command_loop():
     ctx = zmq.Context()
     sock = ctx.socket(zmq.SUB)
     sock.bind('tcp://127.0.0.1:4000')
-    sock.subscribe(b'CONTROL')
+    sock.subscribe(Commands.topic.value)
     while True:
         topic, cmd = sock.recv_multipart()
-        if cmd == b'on':
+        if cmd == Commands.on.value:
             log.info('Set Battery on')
             send_command(set_battery_on())
-        elif cmd == b'off':
+        elif cmd == Commands.off.value:
             log.info('Set Battery off')
             send_command(set_battery_off())
-        elif cmd == b'reset':
+        elif cmd == Commands.reset.value:
             log.info('Reset battery')
             send_command(set_reset_battery())
-        elif cmd == b'ack':
+        elif cmd == Commands.ack.value:
             log.info('Send Ack')
             send_command(set_reset_alarm())
-        elif cmd == b'LIVE':
+        elif cmd == Commands.live.value:
             query_scheduler.switch(QueryScheduler.LIVE)
 
 
@@ -475,7 +541,7 @@ def send_command(frame):
 
 def txd_sense_wait():
     while True:
-        if gpio.wait_for_edge(TXD_SENSE, gpio.FALLING, timeout=500) is None:
+        if gpio.wait_for_edge(TXD_SENSE, gpio.FALLING, timeout=10000) is None:
             break
 
 
@@ -496,6 +562,8 @@ def send(ser, frames):
 
                 req = FrameParser.from_bytes(frame)
                 rep = FrameParser.from_bytes(data)
+
+                log.info(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
                 if req.is_reply(rep):
                     try:
                         values = rep.read_reply(ser)
@@ -507,7 +575,7 @@ def send(ser, frames):
         gpio.output(TXD_EN, True)
 
 
-def query(qtype, service_bit=0, service_bits=0, databytes=None):
+def query(qtype, service_bit=0, service_bits=0, databytes=None) -> bytes:
     packet = 1
     packet |= (qtype << 1)
     packet |= service_bit << 3
@@ -515,67 +583,67 @@ def query(qtype, service_bit=0, service_bits=0, databytes=None):
     data = bytearray([packet])
     if databytes:
         data.extend(databytes)
-    return data
+    return bytes(data)
 
 
-def query_battery_on():
+def query_battery_on() -> bytes:
     return query(Control.Query, service_bits=1)
 
 
-def set_battery_off():
+def set_battery_off() -> bytes:
     return query(Control.Set, service_bits=1)
 
 
-def set_battery_on():
+def set_battery_on() -> bytes:
     return query(Control.Set, service_bit=0x1, service_bits=1)
 
 
-def query_voltage():
+def query_voltage() -> bytes:
     return query(Control.Query, service_bit=0x0, service_bits=4)
 
 
-def query_current():
+def query_current() -> bytes:
     return query(Control.Query, service_bit=0x1, service_bits=4)
 
 
-def query_load():
+def query_load() -> bytes:
     return query(Control.Query, service_bit=0x0, service_bits=6)
 
 
-def query_capacity():
+def query_capacity() -> bytes:
     return query(Control.Query, service_bit=0x1, service_bits=6)
 
 
-def query_cell_voltage(cell_id):
+def query_cell_voltage(cell_id) -> bytes:
     return query(Control.Query, service_bit=0x0, service_bits=7, databytes=bytearray([cell_id]))
 
 
-def query_configuration():
+def query_configuration() -> bytes:
     return query(Control.Query, service_bit=0x0, service_bits=10)
 
 
-def query_error_flags():
+def query_error_flags() -> bytes:
     return query(Control.Query, service_bit=0x0, service_bits=9)
 
 
-def query_error_history(area):
+def query_error_history(area) -> bytes:
     data = struct.pack('<H', area)
     return query(Control.Query, service_bit=0x0, service_bits=9, databytes=data)
 
 
-def query_cell_temperature():
+def query_cell_temperature() -> bytes:
     return query(Control.Query, service_bit=0x1, service_bits=7)
 
 
-def set_reset_alarm():
+def set_reset_alarm() -> bytes:
     return query(Control.Set, service_bit=0x0, service_bits=8)
 
 
-def set_reset_battery():
+def set_reset_battery() -> bytes:
     return query(Control.Set, service_bit=0x1, service_bits=8)
 
 
-def discard_old_cycles():
+def discard_old_cycles() -> None:
     cycle = 1
     while session.query(Statistik).count() > 1_000_000:
         log.info(f'Lösche Zyklus {cycle}')
@@ -596,7 +664,7 @@ if __name__ == '__main__':
     TXD_EN = 17
     TXD_SENSE = 22
     RXD_SENSE = 27
-    gpio.setup(TXD_EN, gpio.OUT, initial=gpio.HIGH)         # /Transmit Data Enable
+    gpio.setup(TXD_EN, gpio.OUT, initial=gpio.HIGH)            # /Transmit Data Enable
     gpio.setup(RXD_SENSE, gpio.IN, pull_up_down=gpio.PUD_DOWN) # Receive Data Sense
     gpio.setup(TXD_SENSE, gpio.IN, pull_up_down=gpio.PUD_UP)   # /Transmit Data Sense
     ser = serial.Serial(
@@ -629,15 +697,16 @@ if __name__ == '__main__':
         (query_error_flags(), 15),
     ]
 
+    log.debug('Starte QueryScheduler')
     query_scheduler = QueryScheduler(queries_normal, queries_live)
 
-    # starte thread mit einem zmq subscriber,
-    # der lediglich kommandos an den Akku sendet
+    # starte Thread mit einem zmq subscriber,
+    # der lediglich Befehle an den Akku sendet
+    log.debug('Starte Befehlsempfänger')
     command_server = Thread(target=command_loop)
     command_server.start()
-    # Monitor um zwischen normal/live/monitor umschalten zu können
-    # monitor = Monitor(monitor_duration=3600, live_duration=5)
-    # starte den Datenlogger.
 
+    # starte den Datenlogger.
+    log.debug('Starte Datenlogger')
     data_logger = DataReader(ser, query_scheduler, normal_interval=60, live_interval=5)
     data_logger.start()
