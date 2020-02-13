@@ -687,6 +687,9 @@ def make_query(
         service_bits: int = 0,
         databytes: Union[None, bytes] = None
 ) -> bytes:
+    """
+    Die Funktion erstellt einen Query basiert auf den übergebenen Argumenten.
+    """
     packet = 1
     packet |= query_type << 1
     packet |= service_bit << 3
@@ -698,61 +701,106 @@ def make_query(
 
 
 def query_battery_on() -> bytes:
+    """
+    Query für die Abfrage ob der Akku ein- oder
+    ausgeschaltet ist
+    """
     return make_query(Control.Query, service_bits=1)
 
 
 def set_battery_off() -> bytes:
+    """
+    Query um den Akku auszuschalten
+    """
     return make_query(Control.Set, service_bits=1)
 
 
 def set_battery_on() -> bytes:
+    """
+    Query um den Akku einzuschalten
+    """
     return make_query(Control.Set, service_bit=0x1, service_bits=1)
 
 
 def query_voltage() -> bytes:
+    """
+    Query um die Gesammtspannung abzufragen
+    """
     return make_query(Control.Query, service_bit=0x0, service_bits=4)
 
 
 def query_current() -> bytes:
+    """
+    Query um den Strom abzufragen
+    """
     return make_query(Control.Query, service_bit=0x1, service_bits=4)
 
 
 def query_load() -> bytes:
+    """
+    Query um die Ladung abzufragen
+    """
     return make_query(Control.Query, service_bit=0x0, service_bits=6)
 
 
 def query_capacity() -> bytes:
+    """
+    Query um die Kapazität abzufragen
+    """
     return make_query(Control.Query, service_bit=0x1, service_bits=6)
 
 
 def query_cell_voltage(cell_id) -> bytes:
+    """
+    Query um die Zellspannung abzufragen.
+    Die ID der Zelle fängt bei 0 an und der Regel
+    besteht ein 12V Akku aus 4 Zellen.
+    """
     return make_query(
         Control.Query, service_bit=0x0, service_bits=7, databytes=bytearray([cell_id])
     )
 
 
 def query_configuration() -> bytes:
+    """
+    Query um die Konfiguration des Akkus abzufragen
+    """
     return make_query(Control.Query, service_bit=0x0, service_bits=10)
 
 
 def query_error_flags() -> bytes:
+    """
+    Query für die Fehlercodes
+    """
     return make_query(Control.Query, service_bit=0x0, service_bits=9)
 
 
 def query_error_history(area) -> bytes:
+    """
+    Query für den Fehler-Speicher
+    """
     data = struct.pack("<H", area)
     return make_query(Control.Query, service_bit=0x0, service_bits=9, databytes=data)
 
 
 def query_cell_temperature() -> bytes:
+    """
+    Query um die Zelltenmperatur abzufragen
+    """
     return make_query(Control.Query, service_bit=0x1, service_bits=7)
 
 
 def set_reset_alarm() -> bytes:
+    """
+    Query um den Alarm zurück zu setzen
+    """
     return make_query(Control.Set, service_bit=0x0, service_bits=8)
 
 
 def set_reset_battery() -> bytes:
+    """
+    Query um die den Akku zurück zu setzen
+    """
     return make_query(Control.Set, service_bit=0x1, service_bits=8)
 
 
