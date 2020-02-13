@@ -423,7 +423,7 @@ class DataReader(Thread):
             )
             diff, positive = self.timedelta_queue.get()
             # den Zyklus und alle Zeilen < self.row müssen aktualisiert werden
-            for stat in self.session.make_query(Statistik).filter(
+            for stat in self.session.query(Statistik).filter(
                     Statistik.cycle == self.cycle, Statistik.row < self.row
             ):
                 if positive:
