@@ -574,9 +574,9 @@ class DataReader(Thread):
     def discard_old_cycles(self) -> None:
         session = self.session
         cycle = 1
-        while session.make_query(Statistik).count() > 1_000_000:
+        while session.query(Statistik).count() > 1_000_000:
             log.info(f"Lösche Zyklus {cycle}")
-            session.make_query(Statistik).filter(Statistik.cycle == cycle).delete()
+            session.query(Statistik).filter(Statistik.cycle == cycle).delete()
             cycle += 1
 
 
