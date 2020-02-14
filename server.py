@@ -602,8 +602,11 @@ class Commands(Enum):
 
 
 class Priority(IntEnum):
-    command = 10
-    query = 5
+    """
+    Lower value > higher priority
+    """
+    command = 5
+    query = 10
 
 
 class GetMany:
