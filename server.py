@@ -695,7 +695,9 @@ class SerialServer(Thread):
         retries: int = 3,
     ) -> None:
         super().__init__()
-        self.serial = serial.Serial(port, baudrate, bytesize, parity, stopbits, timeout=10)
+        self.serial = serial.Serial(
+            port, baudrate, bytesize, parity, stopbits, timeout=10
+        )
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
         self.retries = retries
