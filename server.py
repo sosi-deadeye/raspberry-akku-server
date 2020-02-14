@@ -9,10 +9,11 @@ from collections import deque
 from datetime import datetime
 from enum import IntEnum, Enum
 from logging import getLogger, basicConfig, DEBUG
-from queue import Queue
+from queue import PriorityQueue, Queue
+from queue import Empty as QueueEmpty
 from subprocess import call
-from threading import Thread, Semaphore
-from typing import Union, List, Tuple, Generator, Dict, Any
+from threading import Thread
+from typing import Union, List, Tuple
 
 import RPi.GPIO as GPIO
 import serial
@@ -35,7 +36,12 @@ class QueryScheduler:
     NORMAL = "normal"
     LIVE = "live"
 
-    def __init__(self, queries_normal, queries_live, live_timeout=10):
+    def __init__(
+        self,
+        queries_normal: QueriesType,
+        queries_live: QueriesType,
+        live_timeout: float = 10,
+    ):
         self.mode = self.NORMAL
         self.queries_normal = queries_normal
         self.queries_live = queries_live
@@ -66,7 +72,7 @@ class QueryScheduler:
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> List[bytes]:
         if self.mode == self.LIVE and time.monotonic() > self.normal_after:
             log.info("Switching back to normal mode")
             self.switch(self.NORMAL)
@@ -229,20 +235,20 @@ class FrameParser:
 
     def is_zero(self):
         return (
-                self.frame == 0
-                and self.control == 0
-                and self.data_bit == 0
-                and self.service_bits == 0
+            self.frame == 0
+            and self.control == 0
+            and self.data_bit == 0
+            and self.service_bits == 0
         )
 
     def read_reply(self, serial_connection) -> Tuple:
         frame_type = self.frame_type["type"]
         if frame_type in (
-                Data.AnswerVoltage,
-                Data.AnswerCurrent,
-                Data.AnswerCharge,
-                Data.AnswerCapacity,
-                Data.AnswerTemperature,
+            Data.AnswerVoltage,
+            Data.AnswerCurrent,
+            Data.AnswerCharge,
+            Data.AnswerCapacity,
+            Data.AnswerTemperature,
         ):
             values = struct.unpack("<f", serial_connection.read(4))
         elif frame_type is Data.AnswerCellVoltage:
@@ -256,7 +262,7 @@ class FrameParser:
         else:
             raise TypeError("No data is supplied by this Answer")
         if "constraints" in self.frame_type and not self.frame_type["constraints"](
-                values
+            values
         ):
             raise ValueError(f'Value "{values}" is not in allowed range')
         return values
@@ -264,9 +270,9 @@ class FrameParser:
     def is_reply(self, other) -> bool:
         if other.service_bits != 1:
             return (
-                    self.frame == other.frame
-                    and self.data_bit == other.data_bit
-                    and self.service_bits == other.service_bits
+                self.frame == other.frame
+                and self.data_bit == other.data_bit
+                and self.service_bits == other.service_bits
             )
         else:
             return self.frame == other.frame and self.service_bits == other.service_bits
@@ -296,17 +302,19 @@ class FrameParser:
             control = Control(data & 0x03)
             data_bit = bool(data & 0x08)
             service_bits = data >> 4
-            log.debug(f"Frame(frame={frame}, control={control}, data_bit={data_bit}, service={service_bits})")
+            log.debug(
+                f"Frame(frame={frame}, control={control}, data_bit={data_bit}, service={service_bits})"
+            )
             return cls(frame, control, data_bit, service_bits)
         except ValueError:
             return cls(0, 0, 0, 0)
 
     def __eq__(self, other) -> bool:
         return (
-                self.frame == other.frame
-                and self.control == other.control
-                and self.data_bit == other.data_bit
-                and self.service_bits == other.service_bits
+            self.frame == other.frame
+            and self.control == other.control
+            and self.data_bit == other.data_bit
+            and self.service_bits == other.service_bits
         )
 
     def __bytes__(self) -> bytes:
@@ -321,8 +329,15 @@ class FrameParser:
 
 
 class DataReader(Thread):
-    def __init__(self, serial_connection, queries, normal_interval=30, live_interval=0, cells=4):
-        self.ser = serial_connection
+    def __init__(
+        self,
+        answer_queue: ManyQueue,
+        queries: QueryScheduler,
+        normal_interval: int = 30,
+        live_interval: int = 0,
+        cells: int = 4,
+    ):
+        self.answer_queue = answer_queue
         self.normal_interval = normal_interval
         self.live_interval = live_interval
         self.cells = cells
@@ -424,7 +439,7 @@ class DataReader(Thread):
             diff, positive = self.timedelta_queue.get()
             # den Zyklus und alle Zeilen < self.row müssen aktualisiert werden
             for stat in self.session.query(Statistik).filter(
-                    Statistik.cycle == self.cycle, Statistik.row < self.row
+                Statistik.cycle == self.cycle, Statistik.row < self.row
             ):
                 if positive:
                     corrected_timestamp = stat.timestamp + diff
@@ -438,27 +453,22 @@ class DataReader(Thread):
         Frage Kapazität, Status und Ladung ab
         """
         log.info("Frage Kapazität ab")
-        while True:
-            result = send_one_frame(query_capacity())
-            if result is None:
-                continue
-            description, (capacity, *_) = result
-            log.info(f"Kapazität ist {capacity:.0f} Ah")
-            self.capacity = capacity
-            self.current_values["capacity"] = capacity
-            break
+        send_one_query(query_capacity())
+        _, values = self.answer_queue.get()
+        capacity = values[0]
+        log.info(f"Kapazität ist {capacity:.0f} Ah")
+        self.capacity = capacity
+        self.current_values["capacity"] = capacity
         self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
-        # Query nur einmal senden
-        # wird noch nicht ausgewertet
-        self.ser.write(query_battery_on())
-        values = [self.capacity]
-        while True:
-            result = send_one_frame(query_load())
-            if not result:
-                continue
-            frame_type, values = result
-            self.current_values["charge"] = values[0]
-            break
+
+        send_one_query(query_battery_on())
+        # antwort verwerfen
+        self.answer_queue.get()
+
+        send_one_query(query_load())
+        _, values = self.answer_queue.get()
+        load = values[0]
+        self.current_values["charge"] = load
         log.info(f"Ladung beträgt {values[0]:.0f} Ah.")
 
     def run(self) -> None:
@@ -476,10 +486,14 @@ class DataReader(Thread):
             self.check_timedelta()
 
             # Nächsten query anfordern
-            query = next(self.queries)
+            queries = next(self.queries)
 
-            # Query verarbeiten
-            self.handle_query(query)
+            if queries:
+                # Queries verarbeiten
+                self.handle_query(queries)
+
+            self.database_insert()
+            self.check_alert()
 
             # 100 ms warten.
             time.sleep(0.1)
@@ -542,34 +556,32 @@ class DataReader(Thread):
             self.row += 1
             self.db_next_update = time.monotonic() + self.db_update_interval
 
-    def handle_query(self, query: Union[bytes, None]):
-        if query:
-            for frame_type, values in send_many_frame(query):
-                frame_type = frame_type["type"]
-                if frame_type is Data.AnswerVoltage:
-                    self.current_values["voltage"] = values[0]
-                elif frame_type is Data.AnswerCurrent:
-                    self.current_values["current"] = values[0]
-                    self.stats_current.append(values[0])
-                elif frame_type is Data.AnswerCharge:
-                    self.current_values["charge"] = values[0]
-                elif frame_type is Data.AnswerTemperature:
-                    self.current_values["temperature"] = values[0]
-                elif frame_type is Data.AnswerCellVoltage:
-                    cell_id, cell_voltage = values
-                    try:
-                        self.current_values["cell_voltages"][cell_id] = cell_voltage
-                    except IndexError:
-                        log.error(f"Zellen-Index {cell_id} ist ungültig")
-                elif frame_type is Fault.AnswerErrorFlags:
-                    self.handle_error(values[0])
-                elif frame_type is Mode.AnswerSetOff:
-                    self.session.add(State(cycle=self.cycle, row=self.row, onoff=False))
-                elif frame_type is Mode.AnswerSetOn:
-                    self.session.add(State(cycle=self.cycle, row=self.row, onoff=True))
-            self.update_current_values()
-            self.database_insert()
-            self.check_alert()
+    def handle_query(self, queries: List[bytes]):
+        send_many_queries(queries)
+        for frame_type, values in self.answer_queue.get_many():
+            frame_type = frame_type["type"]
+            if frame_type is Data.AnswerVoltage:
+                self.current_values["voltage"] = values[0]
+            elif frame_type is Data.AnswerCurrent:
+                self.current_values["current"] = values[0]
+                self.stats_current.append(values[0])
+            elif frame_type is Data.AnswerCharge:
+                self.current_values["charge"] = values[0]
+            elif frame_type is Data.AnswerTemperature:
+                self.current_values["temperature"] = values[0]
+            elif frame_type is Data.AnswerCellVoltage:
+                cell_id, cell_voltage = values
+                try:
+                    self.current_values["cell_voltages"][cell_id] = cell_voltage
+                except IndexError:
+                    log.error(f"Zellen-Index {cell_id} ist ungültig")
+            elif frame_type is Fault.AnswerErrorFlags:
+                self.handle_error(values[0])
+            elif frame_type is Mode.AnswerSetOff:
+                self.session.add(State(cycle=self.cycle, row=self.row, onoff=False))
+            elif frame_type is Mode.AnswerSetOn:
+                self.session.add(State(cycle=self.cycle, row=self.row, onoff=True))
+        self.update_current_values()
 
     def discard_old_cycles(self) -> None:
         session = self.session
@@ -589,6 +601,56 @@ class Commands(Enum):
     live = b"LIVE"
 
 
+class Priority(IntEnum):
+    command = 10
+    query = 5
+
+
+class GetMany:
+    """
+    Additional method for a Queue, PriorityQueue or other Queues
+    """
+
+    def get_many(self, timout=0.5):
+        """
+        Return as many queries as possible in a list
+        """
+        queries = []
+        while True:
+            try:
+                item = self.get(block=True, timeout=timout)
+            except QueueEmpty:
+                break
+            else:
+                queries.append(item)
+        return queries
+
+    def get(self, block: bool, timeout: float):
+        raise NotImplementedError
+
+
+class ManyPriorityQueue(PriorityQueue, GetMany):
+    """
+    Extended PriorityQueue
+    """
+
+    def get_many(self, timout=0.5):
+        """
+        Return as many queries as possible in a list
+        Priority is removed from list
+
+        Identical queries are removed, but the order is kept
+        """
+        queries = dict.fromkeys(item[1] for item in super().get_many())
+        return list(queries)
+
+
+class ManyQueue(Queue, GetMany):
+    """
+    ExtendedQueue
+    """
+
+
 def command_loop() -> None:
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
@@ -599,39 +661,18 @@ def command_loop() -> None:
         topic, cmd = sock.recv_multipart()
         if cmd == Commands.on.value:
             log.info("Set Battery on")
-            send_one_frame(set_battery_on())
+            send_command(set_battery_on())
         elif cmd == Commands.off.value:
             log.info("Set Battery off")
-            send_one_frame(set_battery_off())
+            send_command(set_battery_off())
         elif cmd == Commands.reset.value:
             log.info("Reset battery")
-            send_one_frame(set_reset_battery())
+            send_command(set_reset_battery())
         elif cmd == Commands.ack.value:
             log.info("Send Ack")
-            send_one_frame(set_reset_alarm())
+            send_command(set_reset_alarm())
         elif cmd == Commands.live.value:
             query_scheduler.live()
-
-
-# def send_command(frame: bytes) -> None:
-#     with sending:
-#         while True:
-#             if gpio.input(TXD_SENSE):
-#                 break
-#             time.sleep(1)
-#         gpio.output(TXD_EN, False)
-#         gpio.wait_for_edge(RXD_SENSE, gpio.RISING)
-#         while True:
-#             time.sleep(0.3)
-#             ser.reset_input_buffer()
-#             ser.write(frame)
-#             data = ser.read(1)
-#             print("XX", end="", flush=True)
-#             req = FrameParser.from_bytes(frame)
-#             rep = FrameParser.from_bytes(data)
-#             if req.is_reply(rep):
-#                 break
-#         gpio.output(TXD_EN, True)
 
 
 def txd_sense_wait() -> None:
@@ -640,52 +681,79 @@ def txd_sense_wait() -> None:
             break
 
 
-def send_one_frame(frame: bytes, tx_lock: bool = True, retries=3) -> Tuple[Dict, Tuple[Any]]:
-    with sending:
-        if tx_lock:
+class SerialServer(Thread):
+    def __init__(
+        self,
+        *,
+        port: str,
+        baudrate: int,
+        parity: int,
+        bytesize: int,
+        stopbits: int,
+        sender_queue: ManyPriorityQueue,
+        receiver_queue: Queue,
+        retries: int = 3,
+    ) -> None:
+        super().__init__()
+        self.serial = serial.Serial(port, baudrate, bytesize, parity, stopbits, timeout=10)
+        self.sender_queue = sender_queue
+        self.receiver_queue = receiver_queue
+        self.retries = retries
+
+    def run(self):
+        while True:
+            queries = self.sender_queue.get_many()
+            log.debug(f"Got queries: {queries}")
             txd_sense_wait()
             GPIO.output(TXD_EN, False)
-        for _ in range(retries):
-            ser.reset_input_buffer()
-
-            ser.write(frame)
-            # print('T', end='', flush=True)
-
-            data = ser.read(1)
-            # print('R', end='', flush=True)
-
-            req = FrameParser.from_bytes(frame)
-            rep = FrameParser.from_bytes(data)
-
-            log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
-
-            if req.is_reply(rep):
-                try:
-                    values = rep.read_reply(ser)
-                except (TypeError, ValueError) as e:
-                    log.critical(f"{e} {rep}")
-                else:
-                    return rep.frame_type, values
-        if tx_lock:
+            for query in queries:
+                for _ in range(self.retries):
+                    self.serial.reset_input_buffer()
+                    self.serial.write(query)
+                    req = FrameParser.from_bytes(query)
+                    data = self.serial.read(1)
+                    rep = FrameParser.from_bytes(data)
+                    log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
+                    if req.is_reply(rep):
+                        try:
+                            values = rep.read_reply(self.serial)
+                        except (TypeError, ValueError) as e:
+                            log.critical(f"{e} {rep}")
+                        else:
+                            self.receiver_queue.put((rep.frame_type, values))
+                            break
             GPIO.output(TXD_EN, True)
+            time.sleep(0.1)
 
 
-def send_many_frame(frames) -> Generator[Tuple[Enum, Tuple], None, None]:
+def send_one_query(query) -> None:
     """
-    Mehrere Anfragen aufeinmal an den Akku senden.
+    Eine Anfrage zur Warteschlange schicken
     """
-    txd_sense_wait()
-    GPIO.output(TXD_EN, False)
-    for frame in frames:
-        yield send_one_frame(frame, tx_lock=False)
-    GPIO.output(TXD_EN, True)
+    item = (Priority.query, query)
+    log.debug(f"Priorität {item[0]} | {query}")
+    serial_sender_queue.put(item)
+
+
+def send_many_queries(queries) -> None:
+    """
+    Mehrere Anfragen aufeinmal zur Warteschlange schicken
+    """
+    for query in queries:
+        item = (Priority.query, query)
+        serial_sender_queue.put(item)
+
+
+def send_command(command_query) -> None:
+    item = (Priority.command, command_query)
+    serial_sender_queue.put(item)
 
 
 def make_query(
-        query_type: int,
-        service_bit: int = 0,
-        service_bits: int = 0,
-        databytes: Union[None, bytes] = None
+    query_type: int,
+    service_bit: int = 0,
+    service_bits: int = 0,
+    databytes: Union[None, bytes] = None,
 ) -> bytes:
     """
     Die Funktion erstellt einen Query basiert auf den übergebenen Argumenten.
@@ -806,7 +874,8 @@ def set_reset_battery() -> bytes:
 
 basicConfig(level=DEBUG)
 log = getLogger("Server")
-sending = Semaphore()
+serial_sender_queue = ManyPriorityQueue(maxsize=10)
+serial_receiver_queue = ManyQueue()
 
 if __name__ == "__main__":
     GPIO.setwarnings(False)
@@ -817,15 +886,10 @@ if __name__ == "__main__":
     GPIO.setup(TXD_EN, GPIO.OUT, initial=GPIO.HIGH)  # /Transmit Data Enable
     GPIO.setup(RXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Receive Data Sense
     GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
-    ser = serial.Serial(
-        "/dev/serial0",
-        baudrate=1000,
-        parity=serial.PARITY_EVEN,
-        bytesize=serial.EIGHTBITS,
-        stopbits=serial.STOPBITS_ONE,
-    )
 
-    QUERIES_NORMAL: List[bytes, int] = [
+    QueriesType = List[Tuple[bytes, int]]
+
+    QUERIES_NORMAL: QueriesType = [
         (query_voltage(), 60),
         (query_current(), 10),
         (query_load(), 60),
@@ -834,7 +898,7 @@ if __name__ == "__main__":
         (query_error_flags(), 60),
     ]
 
-    QUERIES_LIVE: List[bytes, int] = [
+    QUERIES_LIVE: QueriesType = [
         (query_voltage(), 15),
         (query_current(), 2),
         (query_load(), 60),
@@ -846,13 +910,24 @@ if __name__ == "__main__":
     log.debug("Starte QueryScheduler")
     query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
 
-    # starte Thread mit einem zmq subscriber,
-    # der lediglich Befehle an den Akku sendet
+    log.debug("Starte seriellen Server")
+    serial_server = SerialServer(
+        port="/dev/serial0",
+        baudrate=1000,
+        parity=serial.PARITY_EVEN,
+        bytesize=serial.EIGHTBITS,
+        stopbits=serial.STOPBITS_ONE,
+        sender_queue=serial_sender_queue,
+        receiver_queue=serial_receiver_queue,
+    )
+    serial_server.start()
+
     log.debug("Starte Befehlsempfänger")
     command_server = Thread(target=command_loop)
     command_server.start()
 
-    # starte den Datenlogger.
     log.debug("Starte Datenlogger")
-    data_logger = DataReader(ser, query_scheduler, normal_interval=60, live_interval=5)
+    data_logger = DataReader(
+        serial_receiver_queue, query_scheduler, normal_interval=60, live_interval=5
+    )
     data_logger.start()
