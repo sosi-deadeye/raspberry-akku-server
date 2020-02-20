@@ -32,6 +32,13 @@ from database import (
 )
 
 
+TXD_EN = 17  # /Transmit Data Enable
+TXD_SENSE = 22  # Receive Data Sense
+RXD_SENSE = 27  # /Transmit Data Sense
+
+QueriesType = List[Tuple[bytes, int]]
+
+
 class QueryScheduler:
     NORMAL = "normal"
     LIVE = "live"
@@ -330,10 +337,7 @@ class FrameParser:
 
 class DataReader(Thread):
     def __init__(
-        self,
-        answer_queue: ManyQueue,
-        queries: QueryScheduler,
-        cells: int = 4,
+        self, answer_queue: ManyQueue, queries: QueryScheduler, cells: int = 4,
     ):
         self.answer_queue: ManyQueue = answer_queue
         self.cells: int = cells
@@ -602,6 +606,7 @@ class Priority(IntEnum):
     """
     Lower value > higher priority
     """
+
     command = 5
     query = 10
 
@@ -874,41 +879,43 @@ def set_reset_battery() -> bytes:
     return make_query(Control.Set, service_bit=0x1, service_bits=8)
 
 
+def setup_gpio():
+    """
+    Ein- und Ausgänge konfigurieren und setzen.
+    """
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(TXD_EN, GPIO.OUT, initial=GPIO.HIGH)  # /Transmit Data Enable
+    GPIO.setup(RXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Receive Data Sense
+    GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
+
+
 basicConfig(level=DEBUG)
 log = getLogger("Server")
 serial_sender_queue = ManyPriorityQueue(maxsize=10)
 serial_receiver_queue = ManyQueue()
 
+QUERIES_NORMAL: QueriesType = [
+    (query_voltage(), 60),
+    (query_current(), 10),
+    (query_load(), 60),
+    (query_cell_temperature(), 60),
+    *[(query_cell_voltage(n), 60) for n in range(4)],
+    (query_error_flags(), 60),
+]
+
+QUERIES_LIVE: QueriesType = [
+    (query_voltage(), 15),
+    (query_current(), 2),
+    (query_load(), 60),
+    (query_cell_temperature(), 60),
+    *[(query_cell_voltage(n), 15) for n in range(4)],
+    (query_error_flags(), 15),
+]
+
+
 if __name__ == "__main__":
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BCM)
-    TXD_EN = 17  # /Transmit Data Enable
-    TXD_SENSE = 22  # Receive Data Sense
-    RXD_SENSE = 27  # /Transmit Data Sense
-    GPIO.setup(TXD_EN, GPIO.OUT, initial=GPIO.HIGH)  # /Transmit Data Enable
-    GPIO.setup(RXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Receive Data Sense
-    GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
-
-    QueriesType = List[Tuple[bytes, int]]
-
-    QUERIES_NORMAL: QueriesType = [
-        (query_voltage(), 60),
-        (query_current(), 10),
-        (query_load(), 60),
-        (query_cell_temperature(), 60),
-        *[(query_cell_voltage(n), 60) for n in range(4)],
-        (query_error_flags(), 60),
-    ]
-
-    QUERIES_LIVE: QueriesType = [
-        (query_voltage(), 15),
-        (query_current(), 2),
-        (query_load(), 60),
-        (query_cell_temperature(), 60),
-        *[(query_cell_voltage(n), 15) for n in range(4)],
-        (query_error_flags(), 15),
-    ]
-
+    setup_gpio()
     log.debug("Starte QueryScheduler")
     query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
 
@@ -929,7 +936,5 @@ if __name__ == "__main__":
     command_server.start()
 
     log.debug("Starte Datenlogger")
-    data_logger = DataReader(
-        serial_receiver_queue, query_scheduler
-    )
+    data_logger = DataReader(serial_receiver_queue, query_scheduler)
     data_logger.start()
