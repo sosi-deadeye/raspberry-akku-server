@@ -13,7 +13,7 @@ from queue import PriorityQueue, Queue
 from queue import Empty as QueueEmpty
 from subprocess import call
 from threading import Thread
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional, IO
 
 import RPi.GPIO as GPIO
 import serial
@@ -333,21 +333,17 @@ class DataReader(Thread):
         self,
         answer_queue: ManyQueue,
         queries: QueryScheduler,
-        normal_interval: int = 30,
-        live_interval: int = 0,
         cells: int = 4,
     ):
-        self.answer_queue = answer_queue
-        self.normal_interval = normal_interval
-        self.live_interval = live_interval
-        self.cells = cells
-        self.queries = queries
+        self.answer_queue: ManyQueue = answer_queue
+        self.cells: int = cells
+        self.queries: QueryScheduler = queries
         self.session = Session()
-        self.cycle = set_cycle(self.session)
-        self.capacity = None
-        self.last_error = None
-        self.last_error_flags = None
-        self.error_topics = [
+        self.cycle: int = set_cycle(self.session)
+        self.capacity: Optional[float] = None
+        self.last_error: Optional[int] = None
+        self.last_error_flags: Optional[int] = None
+        self.error_topics: list = [
             0x0010,
             0x0020,
             0x0100,
@@ -357,9 +353,8 @@ class DataReader(Thread):
             0x4000,
             0x8000,
         ]
-        self.notified = False
-        self.row = 0
-        self.battery_state = None
+        self.notified: bool = False
+        self.row: int = 0
         self.current_values = {
             "voltage": 0.0,
             "current": 0.0,
@@ -369,15 +364,16 @@ class DataReader(Thread):
             "cell_voltages": [0.0] * self.cells,
             "error": 0,
         }
-        self._current_values_st = struct.Struct("<5i9f")
-        self._fd = None
-        self._mmap = None
+        self._current_values_st: struct.Struct = struct.Struct("<5i9f")
+        self._fd: Optional[IO[bytes]] = None
+        self._mmap: Optional[mmap.mmap] = None
         self.create_mmap()
-        self.db_update_interval = 60
-        self.db_next_update = time.monotonic() + 120
-        self.stats_current = deque(maxlen=4)
-        self.timedelta_queue: Union[None, Queue] = None
-        self.notified = False
+        self.db_update_interval: float = 60
+        self.db_next_update: float = time.monotonic() + 120
+        self.stats_current: deque = deque(maxlen=4)
+        self.stats_charge: deque = deque(maxlen=4)
+        self.timedelta_queue: Optional[Queue] = None
+        self.notified: bool = False
         super().__init__()
 
     def handle_error(self, error_flags: int) -> None:
@@ -567,6 +563,7 @@ class DataReader(Thread):
                 self.stats_current.append(values[0])
             elif frame_type is Data.AnswerCharge:
                 self.current_values["charge"] = values[0]
+                self.stats_charge.append(values[0])
             elif frame_type is Data.AnswerTemperature:
                 self.current_values["temperature"] = values[0]
             elif frame_type is Data.AnswerCellVoltage:
@@ -930,6 +927,6 @@ if __name__ == "__main__":
 
     log.debug("Starte Datenlogger")
     data_logger = DataReader(
-        serial_receiver_queue, query_scheduler, normal_interval=60, live_interval=5
+        serial_receiver_queue, query_scheduler
     )
     data_logger.start()
