@@ -2,7 +2,7 @@
 
 ## Dienste
 - api (Bereitstellung der Daten via http)
-- server (Akquirierung der Daten)
+- server (Akquirieren der Daten)
 
 Die Dienste sind via systemd konfiguriert und laufen aktuell noch mit root-Rechten.
 Der Quellcode befindet sich in /root/akku
