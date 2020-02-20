@@ -9,8 +9,8 @@ from collections import deque
 from datetime import datetime
 from enum import IntEnum, Enum
 from logging import getLogger, basicConfig, DEBUG
-from queue import PriorityQueue, Queue
 from queue import Empty as QueueEmpty
+from queue import PriorityQueue, Queue
 from subprocess import call
 from threading import Thread
 from typing import Union, List, Tuple, Optional, IO
@@ -30,7 +30,6 @@ from database import (
     set_cycle,
     Statistik,
 )
-
 
 TXD_EN = 17  # /Transmit Data Enable
 TXD_SENSE = 22  # Receive Data Sense
@@ -492,6 +491,7 @@ class DataReader(Thread):
 
             if queries:
                 # Queries verarbeiten
+                log.debug(queries)
                 self.handle_query(queries)
 
             self.database_insert()
@@ -648,7 +648,7 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
 
         Identical queries are removed, but the order is kept
         """
-        queries = dict.fromkeys(item[1] for item in super().get_many())
+        queries = dict.fromkeys(item[1] for item in super().get_many(timout=timout))
         return list(queries)
 
 
@@ -682,10 +682,35 @@ def command_loop() -> None:
             query_scheduler.live()
 
 
-def txd_sense_wait() -> None:
-    while True:
-        if GPIO.wait_for_edge(TXD_SENSE, GPIO.FALLING, timeout=10000) is None:
-            break
+class SerialTxLock:
+    """
+    Kontextmanager der die Logik für den Handshake regelt.
+    """
+
+    def __init__(
+        self,
+        timeout: float = 10,
+        txd_enable_pin: int = TXD_EN,
+        txd_sense_pin: int = TXD_SENSE,
+    ):
+        self.timeout = int(timeout * 1000)
+        self.txd_enable = txd_enable_pin
+        self.txd_sense = txd_sense_pin
+
+    def __enter__(self):
+        GPIO.output(self.txd_enable, False)
+        self.txd_sense_wait()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        GPIO.output(self.txd_enable, True)
+
+    def txd_sense_wait(self) -> None:
+        while True:
+            if (
+                GPIO.wait_for_edge(self.txd_sense, GPIO.FALLING, timeout=self.timeout)
+                is None
+            ):
+                break
 
 
 class SerialServer(Thread):
@@ -708,31 +733,31 @@ class SerialServer(Thread):
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
         self.retries = retries
+        self.serial_handshake = SerialTxLock()
 
     def run(self):
         while True:
             queries = self.sender_queue.get_many()
             # log.debug(f"Got queries: {queries}")
-            # txd_sense_wait()
-            GPIO.output(TXD_EN, False)
-            txd_sense_wait()
-            for query in queries:
-                for _ in range(self.retries):
-                    self.serial.reset_input_buffer()
-                    self.serial.write(query)
-                    req = FrameParser.from_bytes(query)
-                    data = self.serial.read(1)
-                    rep = FrameParser.from_bytes(data)
-                    if req.is_reply(rep):
-                        try:
-                            values = rep.read_reply(self.serial)
-                        except (TypeError, ValueError) as e:
-                            log.critical(f"{e} {rep}")
-                        else:
-                            self.receiver_queue.put((rep.frame_type, values))
-                            log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}: {rep.values}')
-                            break
-            GPIO.output(TXD_EN, True)
+            with self.serial_handshake:
+                for query in queries:
+                    for _ in range(self.retries):
+                        self.serial.reset_input_buffer()
+                        self.serial.write(query)
+                        req = FrameParser.from_bytes(query)
+                        data = self.serial.read(1)
+                        rep = FrameParser.from_bytes(data)
+                        if req.is_reply(rep):
+                            try:
+                                values = rep.read_reply(self.serial)
+                            except (TypeError, ValueError) as e:
+                                log.critical(f"{e} {rep}")
+                            else:
+                                self.receiver_queue.put((rep.frame_type, values))
+                                log.debug(
+                                    f'{req.frame_type["type"]} -> {rep.frame_type["type"]}: {rep.values}'
+                                )
+                                break
             log.debug("Wait for new Queries")
             time.sleep(0.1)
 
