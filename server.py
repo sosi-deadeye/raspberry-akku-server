@@ -882,9 +882,9 @@ serial_receiver_queue = ManyQueue()
 if __name__ == "__main__":
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    TXD_EN = 17
-    TXD_SENSE = 22
-    RXD_SENSE = 27
+    TXD_EN = 17  # /Transmit Data Enable
+    TXD_SENSE = 22  # Receive Data Sense
+    RXD_SENSE = 27  # /Transmit Data Sense
     GPIO.setup(TXD_EN, GPIO.OUT, initial=GPIO.HIGH)  # /Transmit Data Enable
     GPIO.setup(RXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Receive Data Sense
     GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
