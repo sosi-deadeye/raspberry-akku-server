@@ -235,6 +235,7 @@ class FrameParser:
         self.control = control
         self.data_bit = data_bit
         self.service_bits = service_bits
+        self.values = []
         try:
             self.frame_type = self.types[(frame, control, data_bit, service_bits)]
         except KeyError:
@@ -272,6 +273,7 @@ class FrameParser:
             values
         ):
             raise ValueError(f'Value "{values}" is not in allowed range')
+        self.values = values
         return values
 
     def is_reply(self, other) -> bool:
@@ -300,18 +302,18 @@ class FrameParser:
     def from_bytes(cls, value: Union[int, bytes]) -> FrameParser:
         if isinstance(value, int):
             value = bytes(bytearray([value]))
-            log.debug(f"Int gelesen: [{value}]")
-        else:
-            log.debug(f"Bytes gelesen: [{value}]")
+        #     log.debug(f"Int gelesen: [{value}]")
+        # else:
+        #     log.debug(f"Bytes gelesen: [{value}]")
         try:
             data = value[0]
             frame = Frame(data & 0x1)
-            control = Control(data & 0x03)
+            control = Control(data >> 1 & 0x03)
             data_bit = bool(data & 0x08)
             service_bits = data >> 4
-            log.debug(
-                f"Frame(frame={frame}, control={control}, data_bit={data_bit}, service={service_bits})"
-            )
+            # log.debug(
+            #     f"Frame(frame={frame}, control={control}, data_bit={data_bit}, service={service_bits})"
+            # )
             return cls(frame, control, data_bit, service_bits)
         except ValueError:
             return cls(0, 0, 0, 0)
@@ -710,9 +712,10 @@ class SerialServer(Thread):
     def run(self):
         while True:
             queries = self.sender_queue.get_many()
-            log.debug(f"Got queries: {queries}")
-            txd_sense_wait()
+            # log.debug(f"Got queries: {queries}")
+            # txd_sense_wait()
             GPIO.output(TXD_EN, False)
+            txd_sense_wait()
             for query in queries:
                 for _ in range(self.retries):
                     self.serial.reset_input_buffer()
@@ -720,7 +723,6 @@ class SerialServer(Thread):
                     req = FrameParser.from_bytes(query)
                     data = self.serial.read(1)
                     rep = FrameParser.from_bytes(data)
-                    log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}')
                     if req.is_reply(rep):
                         try:
                             values = rep.read_reply(self.serial)
@@ -728,8 +730,10 @@ class SerialServer(Thread):
                             log.critical(f"{e} {rep}")
                         else:
                             self.receiver_queue.put((rep.frame_type, values))
+                            log.debug(f'{req.frame_type["type"]} -> {rep.frame_type["type"]}: {rep.values}')
                             break
             GPIO.output(TXD_EN, True)
+            log.debug("Wait for new Queries")
             time.sleep(0.1)
 
 
@@ -738,7 +742,7 @@ def send_one_query(query) -> None:
     Eine Anfrage zur Warteschlange schicken
     """
     item = (Priority.query, query)
-    log.debug(f"Priorität {item[0]} | {query}")
+    # log.debug(f"Priorität {item[0]} | {query}")
     serial_sender_queue.put(item)
 
 
