@@ -375,7 +375,7 @@ class DataReader(Thread):
         self.db_update_interval: float = 60
         self.db_next_update: float = time.monotonic() + 120
         self.stats_current: deque = deque(maxlen=4)
-        self.stats_charge: deque = deque(maxlen=4)
+        self.stats_charge: deque = deque(maxlen=10)
         self.timedelta_queue: Optional[Queue] = None
         self.notified: bool = False
         super().__init__()
@@ -502,8 +502,13 @@ class DataReader(Thread):
         Ladung unter 15% ist -> E-Mail versenden
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
-        if self.current_values["charge"] and self.capacity:
-            relative_load = (self.current_values["charge"] / self.capacity) * 100
+        if not math.isclose(self.capacity, 0):
+            try:
+                median_charge = statistics.median(self.stats_charge)
+                median_current = statistics.median(self.stats_current)
+            except statistics.StatisticsError:
+                return
+            relative_load = (median_charge / self.capacity) * 100
             # log.info(f'Relative Ladung {relative_load}')
             if not self.notified and 10 < relative_load < 15:
                 log.warning("Ladung unter 15%. E-Mail wird gesendet.")
@@ -515,7 +520,7 @@ class DataReader(Thread):
                 )
                 notify_thread.start()
                 self.notified = True
-            elif relative_load < 10:
+            elif relative_load < 10 and median_current < 0:
                 notify.send_report(
                     "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
                 )
