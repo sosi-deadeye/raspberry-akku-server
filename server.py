@@ -753,6 +753,7 @@ class SerialServer(Thread):
         query_frame = FrameParser.from_bytes(query)
         try:
             f_type = query_frame.frame_type["type"]
+            # noinspection PyUnresolvedReferences
             log.debug(f"Anfrage: {f_type.value}")
         except (ValueError, AttributeError):
             pass
@@ -760,6 +761,7 @@ class SerialServer(Thread):
     @staticmethod
     def log_answer(rep: FrameParser):
         try:
+            # noinspection PyUnresolvedReferences
             frame_name = rep.frame_type["type"].value
             log.debug(f'Antwort: {frame_name}: {rep.values}')
         except (ValueError, AttributeError):
