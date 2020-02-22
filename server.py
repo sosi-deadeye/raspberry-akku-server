@@ -705,7 +705,7 @@ class SerialTxLock:
 
     def __init__(
         self,
-        timeout: float = 300,
+        timeout: Union[float, int] = 300,
         txd_enable_pin: int = TXD_EN,
         txd_sense_pin: int = TXD_SENSE,
         rxd_sense_pin: int = RXD_SENSE,
@@ -791,11 +791,9 @@ class SerialServer(Thread):
             log.debug(f"Error: {e}")
 
     def read_data(self):
-        for _ in range(1):
-            data = self.serial.read(1)
-            rep = FrameParser.from_bytes(data)
-            if rep.is_zero():
-                continue
+        data = self.serial.read(1)
+        rep = FrameParser.from_bytes(data)
+        if not rep.is_zero():
             try:
                 values = rep.read_reply(self.serial)
             except (TypeError, ValueError) as e:
@@ -819,11 +817,13 @@ class SerialServer(Thread):
 
                     # Daten nach den Anfragen lesen
                     time.sleep(0.3 + 0.2 * len(queries))
-                    self.read_data()
+                    for _ in range(len(queries)):
+                        self.read_data()
 
             # Lese restliche Daten
             if self.serial.in_waiting:
                 self.read_data()
+                # self.serial.flushInput()
             time.sleep(0.1)
 
 
@@ -989,15 +989,6 @@ log = getLogger("Server")
 serial_sender_queue = ManyPriorityQueue()
 serial_receiver_queue = ManyQueue()
 
-QUERIES_NORMAL: QueriesType = [
-    (query_voltage(), 60),
-    (query_current(), 10),
-    (query_load(), 60),
-    (query_cell_temperature(), 5 * 60),
-    *[(query_cell_voltage(n), 5 * 60) for n in range(4)],
-    (query_error_flags(), 60),
-]
-
 QUERIES_LIVE: QueriesType = [
     (query_voltage(), 15),
     (query_current(), 2),
@@ -1005,6 +996,16 @@ QUERIES_LIVE: QueriesType = [
     (query_cell_temperature(), 60),
     *[(query_cell_voltage(n), 60) for n in range(4)],
     (query_error_flags(), 15),
+]
+
+QUERIES_NORMAL: QueriesType = [
+    (query_voltage(), 60),
+    (query_current(), 10),
+    (query_load(), 60),
+    (query_cell_temperature(), 5 * 60),
+    *[(query_cell_voltage(n), 5 * 60) for n in range(4)],
+    (query_error_flags(), 60),
+    # (query_configuration(), 1),
 ]
 
 
