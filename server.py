@@ -701,7 +701,6 @@ class SerialTxLock:
         log.debug("Betrete Serial-TxD-Lock")
         self.txd_sense_wait()
         self.enable_txd()
-        time.sleep(0.05)
         self.rxd_sense_wait()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -742,7 +741,7 @@ class SerialServer(Thread):
     ) -> None:
         super().__init__()
         self.serial = serial.Serial(
-            port, baudrate, bytesize, parity, stopbits, timeout=0.1
+            port, baudrate, bytesize, parity, stopbits, timeout=1
         )
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
@@ -766,30 +765,38 @@ class SerialServer(Thread):
         except (ValueError, AttributeError):
             pass
 
+    def read_data(self):
+        for _ in range(10):
+            data = self.serial.read(1)
+            rep = FrameParser.from_bytes(data)
+            if rep.is_zero():
+                continue
+            try:
+                values = rep.read_reply(self.serial)
+            except (TypeError, ValueError) as e:
+                log.debug(f"{e} {rep}")
+            else:
+                self.receiver_queue.put((rep.frame_type, values))
+                self.log_answer(rep)
+
     def run(self) -> None:
+
         while True:
             queries = self.sender_queue.get_many()
-            with self.serial_handshake:
-                if queries:
+            if queries:
+                with self.serial_handshake:
+                    time.sleep(0.1)
+                    # Anfrage senden
+                    self.serial.write(b"".join(queries))
                     for query in queries:
-                        self.serial.write(query)
                         self.log_query(query)
 
-                if not self.serial.in_waiting:
-                    continue
+                    # Daten nach den Anfragen lesen
+                    self.read_data()
 
-                for _ in range(10):
-                    data = self.serial.read(1)
-                    rep = FrameParser.from_bytes(data)
-                    if rep.is_zero():
-                        continue
-                    try:
-                        values = rep.read_reply(self.serial)
-                    except (TypeError, ValueError) as e:
-                        log.critical(f"{e} {rep}")
-                    else:
-                        self.receiver_queue.put((rep.frame_type, values))
-                        self.log_answer(rep)
+            # Lese restliche Daten
+            if self.serial.in_waiting:
+                print(self.read_data())
             time.sleep(0.1)
 
 
@@ -952,7 +959,7 @@ def setup_gpio():
 
 basicConfig(level=DEBUG)
 log = getLogger("Server")
-serial_sender_queue = ManyPriorityQueue()
+serial_sender_queue = ManyPriorityQueue(maxsize=2)
 serial_receiver_queue = ManyQueue()
 
 QUERIES_NORMAL: QueriesType = [
