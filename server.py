@@ -590,14 +590,6 @@ class DataReader(Thread):
                 self.session.add(State(cycle=self.cycle, row=self.row, onoff=True))
         self.update_current_values()
 
-    def discard_old_cycles(self) -> None:
-        session = self.session
-        cycle = 1
-        while session.query(Statistik).count() > 1_000_000:
-            log.info(f"Lösche Zyklus {cycle}")
-            session.query(Statistik).filter(Statistik.cycle == cycle).delete()
-            cycle += 1
-
 
 class Commands(Enum):
     topic = b"CONTROL"
