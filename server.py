@@ -615,19 +615,29 @@ class GetMany:
     Additional method for a Queue, PriorityQueue or other Queues
     """
 
-    def get_many(self, timout=0.5):
+    def get_many(self, timout=0.5, max_queue_size=None):
         """
         Return as many queries as possible in a list
         """
         queries = []
-        while True:
-            try:
-                item = self.get(block=True, timeout=timout)
-            except QueueEmpty:
-                break
-            else:
-                queries.append(item)
-        return queries
+        if max_queue_size is None:
+            while True:
+                try:
+                    item = self.get(block=True, timeout=timout)
+                except QueueEmpty:
+                    break
+                else:
+                    queries.append(item)
+            return queries
+        else:
+            for _ in range(max_queue_size):
+                try:
+                    item = self.get(block=True, timeout=timout)
+                except QueueEmpty:
+                    break
+                else:
+                    queries.append(item)
+            return queries
 
     def get(self, block: bool, timeout: float):
         raise NotImplementedError
@@ -638,6 +648,8 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
     Extended PriorityQueue
     """
 
+    max_get_many_size = 5
+
     def get_many(self, timout=0.5):
         """
         Return as many queries as possible in a list
@@ -646,7 +658,12 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
         Identical queries are removed, but the order is kept
         """
         return list(
-            dict.fromkeys(item[1] for item in super().get_many(timout=timout)).keys()
+            dict.fromkeys(
+                item[1]
+                for item in super().get_many(
+                    timout=timout, max_queue_size=self.max_get_many_size
+                )
+            ).keys()
         )
 
 
@@ -763,7 +780,7 @@ class SerialServer(Thread):
         try:
             # noinspection PyUnresolvedReferences
             frame_name = rep.frame_type["type"].value
-            log.debug(f'Antwort: {frame_name}: {rep.values}')
+            log.debug(f"Antwort: {frame_name}: {rep.values}")
         except (ValueError, AttributeError):
             pass
 
