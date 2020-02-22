@@ -31,6 +31,7 @@ from database import (
     Statistik,
 )
 
+
 TXD_EN = 17  # /Transmit Data Enable
 TXD_SENSE = 22  # Receive Data Sense
 RXD_SENSE = 27  # /Transmit Data Sense
@@ -266,7 +267,7 @@ class FrameParser:
         elif frame_type is Mode.AnswerSetOn:
             values = (True,)
         else:
-            raise TypeError("No data is supplied by this Answer")
+            raise TypeError("Fehlerhafte Antwort")
         if "constraints" in self.frame_type and not self.frame_type["constraints"](
             values
         ):
@@ -648,9 +649,7 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
     Extended PriorityQueue
     """
 
-    max_get_many_size = 5
-
-    def get_many(self, timout=0.5):
+    def get_many(self, timout=0.5, max_queue_size=5):
         """
         Return as many queries as possible in a list
         Priority is removed from list
@@ -661,7 +660,7 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
             dict.fromkeys(
                 item[1]
                 for item in super().get_many(
-                    timout=timout, max_queue_size=self.max_get_many_size
+                    timout=timout, max_queue_size=max_queue_size
                 )
             ).keys()
         )
@@ -721,7 +720,6 @@ class SerialTxLock:
         self.rxd_sense_wait()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.rxd_sense_wait()
         self.disable_txd()
         log.debug("Verlasse Serial-TxD-Lock")
 
@@ -772,8 +770,8 @@ class SerialServer(Thread):
             f_type = query_frame.frame_type["type"]
             # noinspection PyUnresolvedReferences
             log.debug(f"Anfrage: {f_type.value}")
-        except (ValueError, AttributeError):
-            pass
+        except (ValueError, AttributeError) as e:
+            log.debug(f"Error: {e}")
 
     @staticmethod
     def log_answer(rep: FrameParser):
@@ -781,8 +779,8 @@ class SerialServer(Thread):
             # noinspection PyUnresolvedReferences
             frame_name = rep.frame_type["type"].value
             log.debug(f"Antwort: {frame_name}: {rep.values}")
-        except (ValueError, AttributeError):
-            pass
+        except (ValueError, AttributeError) as e:
+            log.debug(f"Error: {e}")
 
     def read_data(self):
         for _ in range(10):
@@ -793,7 +791,7 @@ class SerialServer(Thread):
             try:
                 values = rep.read_reply(self.serial)
             except (TypeError, ValueError) as e:
-                log.debug(f"{e} {rep}")
+                log.debug(e)
             else:
                 self.receiver_queue.put((rep.frame_type, values))
                 self.log_answer(rep)
@@ -814,8 +812,8 @@ class SerialServer(Thread):
                     self.read_data()
 
             # Lese restliche Daten
-            if self.serial.in_waiting:
-                print(self.read_data())
+            # if self.serial.in_waiting:
+            #     print(self.read_data())
             time.sleep(0.1)
 
 
@@ -978,7 +976,7 @@ def setup_gpio():
 
 basicConfig(level=DEBUG)
 log = getLogger("Server")
-serial_sender_queue = ManyPriorityQueue(maxsize=2)
+serial_sender_queue = ManyPriorityQueue()
 serial_receiver_queue = ManyQueue()
 
 QUERIES_NORMAL: QueriesType = [
