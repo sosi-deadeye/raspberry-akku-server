@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import math
 import mmap
 import statistics
 import struct
@@ -460,15 +461,15 @@ class DataReader(Thread):
         self.current_values["capacity"] = capacity
         self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
 
-        send_one_query(query_battery_on())
+        # send_one_query(query_battery_on())
         # antwort verwerfen
-        self.answer_queue.get()
+        # self.answer_queue.get()
 
         send_one_query(query_load())
         _, values = self.answer_queue.get()
-        load = values[0]
-        self.current_values["charge"] = load
-        log.info(f"Ladung beträgt {values[0]:.0f} Ah.")
+        charge = values[0]
+        self.current_values["charge"] = charge
+        log.info(f"Ladung beträgt {charge:.0f} Ah.")
 
     def run(self) -> None:
         """
