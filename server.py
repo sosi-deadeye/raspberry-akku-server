@@ -275,6 +275,8 @@ class FrameParser:
         return values
 
     def is_reply(self, other) -> bool:
+        # if other.service_bits == 9:
+        #     print(other, other.frame_type)
         if other.service_bits != 1:
             return (
                 self.frame == other.frame
@@ -298,6 +300,8 @@ class FrameParser:
 
     @classmethod
     def from_bytes(cls, value: Union[int, bytes]) -> FrameParser:
+        if not value:
+            return cls(0, 0, 0, 0)
         if isinstance(value, int):
             value = bytes(bytearray([value]))
         try:
@@ -307,7 +311,7 @@ class FrameParser:
             data_bit = bool(data & 0x08)
             service_bits = data >> 4
             return cls(frame, control, data_bit, service_bits)
-        except ValueError:
+        except (ValueError, IndexError):
             return cls(0, 0, 0, 0)
 
     def __eq__(self, other) -> bool:
@@ -469,23 +473,19 @@ class DataReader(Thread):
         """
         Diese Funktion wird indirekt durch die Methode start() aufgerufen.
         """
-        log.debug("Starte Zeitüberwachung")
+        log.debug("Datalogger: Starte Zeitüberwachung")
         self.timedelta_queue: Queue = timedaemon.start()
         log.info(f"Zyklus: {self.cycle}")
         self.get_important_values()
-        log.info("Betrete Endlosschleife")
+        log.info("Datalogger: Betrete Endlosschleife")
         while True:
             # Prüfe ob sich die Zeit geändert hat
             # und führe Korrekturen aus
             self.check_timedelta()
 
-            # Nächsten query anfordern
             queries = next(self.queries)
-
-            if queries:
-                # Queries verarbeiten
-                self.handle_query(queries)
-
+            self.send_queries(queries)
+            self.handle_queries()
             self.database_insert()
             self.check_alert()
 
@@ -550,8 +550,13 @@ class DataReader(Thread):
             self.row += 1
             self.db_next_update = time.monotonic() + self.db_update_interval
 
-    def handle_query(self, queries: List[bytes]):
+    @staticmethod
+    def send_queries(queries: List[bytes, ...]) -> None:
+        if not queries:
+            return
         send_many_queries(queries)
+
+    def handle_queries(self) -> None:
         for frame_type, values in self.answer_queue.get_many():
             frame_type = frame_type["type"]
             if frame_type is Data.AnswerVoltage:
@@ -640,8 +645,9 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
 
         Identical queries are removed, but the order is kept
         """
-        queries = dict.fromkeys(item[1] for item in super().get_many(timout=timout))
-        return list(queries)
+        return list(
+            dict.fromkeys(item[1] for item in super().get_many(timout=timout)).keys()
+        )
 
 
 class ManyQueue(Queue, GetMany):
@@ -684,19 +690,33 @@ class SerialTxLock:
         timeout: float = 300,
         txd_enable_pin: int = TXD_EN,
         txd_sense_pin: int = TXD_SENSE,
+        rxd_sense_pin: int = RXD_SENSE,
     ):
         self.timeout = int(timeout)
         self.txd_enable = txd_enable_pin
         self.txd_sense = txd_sense_pin
+        self.rxd_sense = rxd_sense_pin
 
     def __enter__(self):
         log.debug("Betrete Serial-TxD-Lock")
         self.txd_sense_wait()
-        GPIO.output(self.txd_enable, False)
+        self.enable_txd()
+        time.sleep(0.05)
+        self.rxd_sense_wait()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        GPIO.output(self.txd_enable, True)
+        self.rxd_sense_wait()
+        self.disable_txd()
         log.debug("Verlasse Serial-TxD-Lock")
+
+    def enable_txd(self):
+        GPIO.output(self.txd_enable, False)
+
+    def disable_txd(self):
+        GPIO.output(self.txd_enable, True)
+
+    def rxd_sense_wait(self) -> None:
+        GPIO.wait_for_edge(self.rxd_sense, GPIO.FALLING)
 
     def txd_sense_wait(self) -> None:
         while True:
@@ -729,42 +749,42 @@ class SerialServer(Thread):
         self.retries = retries
         self.serial_handshake = SerialTxLock()
 
-    def run(self):
+    @staticmethod
+    def log_query(query: bytes) -> None:
+        query_frame = FrameParser.from_bytes(query)
+        f_type = query_frame.frame_type["type"]
+        log.debug(f'Anfrage: {f_type.value}')
+
+    @staticmethod
+    def log_answer(rep: FrameParser):
+        frame_name = rep.frame_type["type"].value
+        log.debug(f'Antwort: {frame_name}: {rep.values}')
+
+    def run(self) -> None:
         while True:
             queries = self.sender_queue.get_many()
-            if not queries:
-                continue
-            # log.debug(f"Got queries: {queries}")
             with self.serial_handshake:
-                for query in queries:
-                    for _ in range(self.retries):
-                        self.serial.reset_input_buffer()
+                if queries:
+                    for query in queries:
                         self.serial.write(query)
-                        req = FrameParser.from_bytes(query)
-                        data = self.serial.read(1)
+                        self.log_query(query)
 
-                        timeout = 10
-                        zeroframe_timeout = time.monotonic() + timeout
-                        while True:
-                            if zeroframe_timeout < time.monotonic():
-                                break
-                            rep = FrameParser.from_bytes(data)
-                            if rep.is_zero():
-                                rep = FrameParser.from_bytes(data)
-                            else:
-                                break
+                if not self.serial.in_waiting:
+                    continue
 
-                        if req.is_reply(rep):
-                            try:
-                                values = rep.read_reply(self.serial)
-                            except (TypeError, ValueError) as e:
-                                log.critical(f"{e} {rep}")
-                            else:
-                                self.receiver_queue.put((rep.frame_type, values))
-                                log.debug(
-                                    f'{req.frame_type["type"]} -> {rep.frame_type["type"]}: {rep.values}'
-                                )
-                                break
+                for _ in range(10):
+                    data = self.serial.read(1)
+                    rep = FrameParser.from_bytes(data)
+                    if rep.is_zero():
+                        continue
+                    try:
+                        values = rep.read_reply(self.serial)
+                    except (TypeError, ValueError) as e:
+                        log.critical(f"{e} {rep}")
+                    else:
+                        self.receiver_queue.put((rep.frame_type, values))
+                        self.log_answer(rep)
+            time.sleep(0.1)
 
 
 def send_one_query(query) -> None:
@@ -926,7 +946,7 @@ def setup_gpio():
 
 basicConfig(level=DEBUG)
 log = getLogger("Server")
-serial_sender_queue = ManyPriorityQueue(maxsize=10)
+serial_sender_queue = ManyPriorityQueue()
 serial_receiver_queue = ManyQueue()
 
 QUERIES_NORMAL: QueriesType = [
