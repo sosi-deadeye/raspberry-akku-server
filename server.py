@@ -88,7 +88,6 @@ class QueryScheduler:
             if time.monotonic() > after
         ]
         self.waiting = self._next_in_queue()
-        # log.info(current_queries)
         return current_queries
 
     def switch(self, mode):
@@ -301,18 +300,12 @@ class FrameParser:
     def from_bytes(cls, value: Union[int, bytes]) -> FrameParser:
         if isinstance(value, int):
             value = bytes(bytearray([value]))
-        #     log.debug(f"Int gelesen: [{value}]")
-        # else:
-        #     log.debug(f"Bytes gelesen: [{value}]")
         try:
             data = value[0]
             frame = Frame(data & 0x1)
             control = Control(data >> 1 & 0x03)
             data_bit = bool(data & 0x08)
             service_bits = data >> 4
-            # log.debug(
-            #     f"Frame(frame={frame}, control={control}, data_bit={data_bit}, service={service_bits})"
-            # )
             return cls(frame, control, data_bit, service_bits)
         except ValueError:
             return cls(0, 0, 0, 0)
@@ -491,7 +484,6 @@ class DataReader(Thread):
 
             if queries:
                 # Queries verarbeiten
-                log.debug(queries)
                 self.handle_query(queries)
 
             self.database_insert()
@@ -689,20 +681,22 @@ class SerialTxLock:
 
     def __init__(
         self,
-        timeout: float = 10,
+        timeout: float = 300,
         txd_enable_pin: int = TXD_EN,
         txd_sense_pin: int = TXD_SENSE,
     ):
-        self.timeout = int(timeout * 1000)
+        self.timeout = int(timeout)
         self.txd_enable = txd_enable_pin
         self.txd_sense = txd_sense_pin
 
     def __enter__(self):
-        GPIO.output(self.txd_enable, False)
+        log.debug("Betrete Serial-TxD-Lock")
         self.txd_sense_wait()
+        GPIO.output(self.txd_enable, False)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         GPIO.output(self.txd_enable, True)
+        log.debug("Verlasse Serial-TxD-Lock")
 
     def txd_sense_wait(self) -> None:
         while True:
@@ -738,6 +732,8 @@ class SerialServer(Thread):
     def run(self):
         while True:
             queries = self.sender_queue.get_many()
+            if not queries:
+                continue
             # log.debug(f"Got queries: {queries}")
             with self.serial_handshake:
                 for query in queries:
@@ -746,7 +742,18 @@ class SerialServer(Thread):
                         self.serial.write(query)
                         req = FrameParser.from_bytes(query)
                         data = self.serial.read(1)
-                        rep = FrameParser.from_bytes(data)
+
+                        timeout = 10
+                        zeroframe_timeout = time.monotonic() + timeout
+                        while True:
+                            if zeroframe_timeout < time.monotonic():
+                                break
+                            rep = FrameParser.from_bytes(data)
+                            if rep.is_zero():
+                                rep = FrameParser.from_bytes(data)
+                            else:
+                                break
+
                         if req.is_reply(rep):
                             try:
                                 values = rep.read_reply(self.serial)
@@ -758,8 +765,6 @@ class SerialServer(Thread):
                                     f'{req.frame_type["type"]} -> {rep.frame_type["type"]}: {rep.values}'
                                 )
                                 break
-            log.debug("Wait for new Queries")
-            time.sleep(0.1)
 
 
 def send_one_query(query) -> None:
