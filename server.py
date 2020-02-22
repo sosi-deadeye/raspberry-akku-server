@@ -453,10 +453,14 @@ class DataReader(Thread):
         Frage Kapazität, Status und Ladung ab
         """
         log.info("Frage Kapazität ab")
+
+        # ==============================
         send_one_query(query_capacity())
         _, values = self.answer_queue.get()
         capacity = values[0]
         log.info(f"Kapazität ist {capacity:.0f} Ah")
+        # ==============================
+
         self.capacity = capacity
         self.current_values["capacity"] = capacity
         self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
@@ -502,7 +506,7 @@ class DataReader(Thread):
         Ladung unter 15% ist -> E-Mail versenden
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
-        if not math.isclose(self.capacity, 0):
+        if self.capacity is not None and not math.isclose(self.capacity, 0):
             try:
                 median_charge = statistics.median(self.stats_charge)
                 median_current = statistics.median(self.stats_current)
@@ -712,14 +716,18 @@ class SerialTxLock:
         self.rxd_sense = rxd_sense_pin
 
     def __enter__(self):
-        log.debug("Betrete Serial-TxD-Lock")
+        # log.debug("Betrete Serial-TxD-Lock")
+        # log.critical("tx_sense_wait")
         self.txd_sense_wait()
+        # log.critical("enable_txd")
         self.enable_txd()
+        # log.critical("rxd_sense_wait")
         self.rxd_sense_wait()
+        # log.critical("Now in context. Sending and reading.")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable_txd()
-        log.debug("Verlasse Serial-TxD-Lock")
+        # log.debug("Verlasse Serial-TxD-Lock")
 
     def enable_txd(self):
         GPIO.output(self.txd_enable, False)
@@ -728,7 +736,9 @@ class SerialTxLock:
         GPIO.output(self.txd_enable, True)
 
     def rxd_sense_wait(self) -> None:
-        GPIO.wait_for_edge(self.rxd_sense, GPIO.FALLING)
+        # log.critical(f"RXD_SENSE={GPIO.input(self.rxd_sense)}")
+        if not GPIO.input(self.rxd_sense):
+            GPIO.wait_for_edge(self.rxd_sense, GPIO.RISING)
 
     def txd_sense_wait(self) -> None:
         while True:
@@ -781,7 +791,7 @@ class SerialServer(Thread):
             log.debug(f"Error: {e}")
 
     def read_data(self):
-        for _ in range(10):
+        for _ in range(1):
             data = self.serial.read(1)
             rep = FrameParser.from_bytes(data)
             if rep.is_zero():
@@ -800,18 +810,20 @@ class SerialServer(Thread):
             queries = self.sender_queue.get_many()
             if queries:
                 with self.serial_handshake:
-                    time.sleep(0.1)
+                    # time.sleep(0.1)
                     # Anfrage senden
                     self.serial.write(b"".join(queries))
+                    self.serial.flush()
                     for query in queries:
                         self.log_query(query)
 
                     # Daten nach den Anfragen lesen
+                    time.sleep(0.3 + 0.2 * len(queries))
                     self.read_data()
 
             # Lese restliche Daten
-            # if self.serial.in_waiting:
-            #     print(self.read_data())
+            if self.serial.in_waiting:
+                self.read_data()
             time.sleep(0.1)
 
 
@@ -981,8 +993,8 @@ QUERIES_NORMAL: QueriesType = [
     (query_voltage(), 60),
     (query_current(), 10),
     (query_load(), 60),
-    (query_cell_temperature(), 60),
-    *[(query_cell_voltage(n), 60) for n in range(4)],
+    (query_cell_temperature(), 5 * 60),
+    *[(query_cell_voltage(n), 5 * 60) for n in range(4)],
     (query_error_flags(), 60),
 ]
 
@@ -991,7 +1003,7 @@ QUERIES_LIVE: QueriesType = [
     (query_current(), 2),
     (query_load(), 60),
     (query_cell_temperature(), 60),
-    *[(query_cell_voltage(n), 15) for n in range(4)],
+    *[(query_cell_voltage(n), 60) for n in range(4)],
     (query_error_flags(), 15),
 ]
 
