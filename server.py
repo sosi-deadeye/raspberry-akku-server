@@ -742,7 +742,7 @@ class SerialServer(Thread):
     ) -> None:
         super().__init__()
         self.serial = serial.Serial(
-            port, baudrate, bytesize, parity, stopbits, timeout=10
+            port, baudrate, bytesize, parity, stopbits, timeout=0.1
         )
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
@@ -752,13 +752,19 @@ class SerialServer(Thread):
     @staticmethod
     def log_query(query: bytes) -> None:
         query_frame = FrameParser.from_bytes(query)
-        f_type = query_frame.frame_type["type"]
-        log.debug(f'Anfrage: {f_type.value}')
+        try:
+            f_type = query_frame.frame_type["type"]
+            log.debug(f"Anfrage: {f_type.value}")
+        except (ValueError, AttributeError):
+            pass
 
     @staticmethod
     def log_answer(rep: FrameParser):
-        frame_name = rep.frame_type["type"].value
-        log.debug(f'Antwort: {frame_name}: {rep.values}')
+        try:
+            frame_name = rep.frame_type["type"].value
+            log.debug(f'Antwort: {frame_name}: {rep.values}')
+        except (ValueError, AttributeError):
+            pass
 
     def run(self) -> None:
         while True:
