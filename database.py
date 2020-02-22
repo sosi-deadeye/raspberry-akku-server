@@ -101,14 +101,6 @@ def to_dict(obj):
     return {key: value for key, value in vars(obj).items() if not key.startswith("_")}
 
 
-# def get_stats(cycle):
-#     yield ','.join(('timestamp', 'voltage', 'current', 'charge', 'temperature', 'cell_voltages'))
-#     for row in query_stats(cycle):
-#         csv_row = ','.join((row.timestamp.isoformat(), str(row.voltage), str(row.current), str(row.charge),
-#                             str(row.temperature), f'"{row.cell_voltages}"')) + '\n'
-#         yield csv_row
-
-
 def get_cycle(session):
     cycle = session.query(Cycle.cycle).order_by(desc("id")).first()
     if cycle:
