@@ -92,5 +92,5 @@ TOPICS = (
     "temperature",
     "timestamp",
 )
+MM_WRITER = MemoryMappedStruct(FILE, STRUCT, writer=True, create=True)
 MM_READER = MemoryMappedStruct(FILE, STRUCT, reader=True)
-MM_WRITER = MemoryMappedStruct(FILE, STRUCT, writer=True, create=False)
