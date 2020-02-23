@@ -12,9 +12,6 @@ from database import (
 )
 
 
-session = Session()
-
-
 def get_stats(cycle):
     whitespace = " "
     header = (
@@ -25,7 +22,7 @@ def get_stats(cycle):
         "temperature",
         "cell_voltages",
     )
-    yield ",".join(header)
+    yield ",".join(header) + "\n"
     for row in session.query(Statistik).filter(Statistik.cycle == cycle).all():
         csv_row = (
             row.timestamp.isoformat(),
