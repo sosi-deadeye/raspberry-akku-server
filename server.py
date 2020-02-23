@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import math
-import mmap
 import statistics
 import struct
 import time
@@ -14,7 +13,7 @@ from queue import Empty as QueueEmpty
 from queue import PriorityQueue, Queue
 from subprocess import call
 from threading import Thread
-from typing import Union, List, Tuple, Optional, IO
+from typing import Union, List, Tuple, Optional
 
 import RPi.GPIO as GPIO
 import serial
@@ -31,6 +30,7 @@ from database import (
     set_cycle,
     Statistik,
 )
+from current_values import set_values as set_current_values
 
 
 TXD_EN = 17  # /Transmit Data Enable
@@ -375,14 +375,10 @@ class DataReader(Thread):
             "cell_voltages": [0.0] * self.cells,
             "error": 0,
         }
-        self._current_values_st: struct.Struct = struct.Struct("<5i9f")
-        self._fd: Optional[IO[bytes]] = None
-        self._mmap: Optional[mmap.mmap] = None
-        self.create_mmap()
         self.db_update_interval: float = 60
         self.db_next_update: float = time.monotonic() + 120
         self.stats_current: deque = deque(maxlen=4)
-        self.stats_charge: deque = deque(maxlen=10)
+        self.stats_charge: deque = deque(maxlen=4)
         self.timedelta_queue: Optional[Queue] = None
         self.notified: bool = False
         super().__init__()
@@ -400,21 +396,6 @@ class DataReader(Thread):
                 self.last_error = error_text
                 Thread(target=notify.send_report, args=(error_text,)).start()
 
-    def create_mmap(self) -> None:
-        """
-        Format:
-        5i: id, row, cycle, capacity, error
-        9f: voltage, current, charge, temperature, timestamp, 4 x cell_voltages
-        """
-        with open("/media/data/current_values.bin", "wb") as fd:
-            fd.write(b"\x00" * self._current_values_st.size)
-        self._fd = open("/media/data/current_values.bin", "r+b")
-        self._mmap = mmap.mmap(
-            fileno=self._fd.fileno(),
-            length=self._current_values_st.size,
-            access=mmap.ACCESS_WRITE,
-        )
-
     def update_current_values(self) -> None:
         current_data = (
             self.row,
@@ -429,9 +410,7 @@ class DataReader(Thread):
             datetime.now().timestamp(),
             *self.current_values["cell_voltages"],
         )
-        self._current_values_st.pack_into(
-            self._mmap, 0, *current_data,
-        )
+        set_current_values(current_data)
 
     def check_timedelta(self) -> None:
         """
