@@ -1,0 +1,16 @@
+
+emails
+fastapi
+gpiozero
+jinja2
+matplotlib
+netifaces
+pendulum
+pydantic
+pyserial
+requests
+RPi.GPIO
+sqlalchemy
+starlette
+uvicorn
+zmq
