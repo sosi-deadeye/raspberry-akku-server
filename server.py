@@ -57,8 +57,7 @@ class QueryScheduler:
         self.waiting = [(query, freq, 0) for (query, freq) in queries_normal]
         self.live_timeout = live_timeout
         self.normal_after = time.monotonic()
-
-        # self.first = False
+        self.first_run = True
 
     def _next_in_waiting(self):
         if self.mode == self.NORMAL:
@@ -83,12 +82,11 @@ class QueryScheduler:
         return self
 
     def __next__(self) -> List[bytes]:
-        if self.mode == self.LIVE and time.monotonic() > self.normal_after:
+        if self.first_run:
+            self.first_run = False
+        elif self.mode == self.LIVE and time.monotonic() > self.normal_after:
             log.info("Switching back to normal mode")
             self.switch(self.NORMAL)
-
-        # if self.first:
-        #     print(self.waiting)
 
         current_queries = [
             bytes(query)
@@ -96,16 +94,12 @@ class QueryScheduler:
             if time.monotonic() > after
         ]
 
-        # if self.first:
-        #     print(current_queries)
-        #     self.first = True
-        # # raise SystemExit
-
         self.waiting = self._next_in_queue()
         return current_queries
 
-    # OVERRIDE
     def switch(self, mode):
+        if self.first_run:
+            return
         if mode == self.LIVE:
             self.normal_after = time.monotonic() + self.live_timeout
         if self.mode != mode:
