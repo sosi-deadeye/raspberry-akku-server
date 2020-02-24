@@ -99,7 +99,7 @@ async def async_statistics(cycle: int):
     """
     headers = {"Content-Disposition": 'attachment; filename="stats.csv"'}
     return StreamingResponse(
-        statistiken.get_stats(cycle), headers=headers, media_type="text/csv"
+        statistiken.get_stats(session, cycle), headers=headers, media_type="text/csv"
     )
 
 

@@ -1,7 +1,7 @@
 import datetime
 from io import BytesIO
 import matplotlib.pyplot as plt
-from typing import Union
+from typing import Generator, Union
 
 
 from database import (
@@ -12,7 +12,7 @@ from database import (
 )
 
 
-def get_stats(cycle):
+def get_stats(session: Session, cycle: int) -> Generator[str, None, None]:
     whitespace = " "
     header = (
         "timestamp",
