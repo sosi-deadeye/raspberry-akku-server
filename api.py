@@ -202,7 +202,7 @@ async def reset_password(request: Request, password: str = Form(...)):
 
 @app.get("/api/ispdb/{email}")
 async def get_isbdb_smtp(request: Request, email: str):
-    task = loop.run_in_executor(executor, ispdb.get_smtp, email)
+    task = await loop.run_in_executor(executor, ispdb.get_smtp, email)
     return task
 
 
