@@ -78,7 +78,7 @@ def set_values(values):
     return MM_WRITER.set_values(values)
 
 
-FILE = "/media/data/current_values.bin"
+FILE = "/tmp/current_values.bin"
 STRUCT = struct.Struct("<5i9f")
 TOPICS = (
     "id",
