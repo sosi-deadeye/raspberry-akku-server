@@ -8,7 +8,7 @@ import time
 from collections import deque
 from datetime import datetime
 from enum import IntEnum, Enum
-from logging import getLogger, basicConfig, DEBUG
+from logging import getLogger, basicConfig, DEBUG, INFO
 from queue import Empty as QueueEmpty
 from queue import PriorityQueue, Queue
 from subprocess import call
@@ -256,7 +256,7 @@ class FrameParser:
             and self.service_bits == 0
         )
 
-    def read_reply(self, serial_connection) -> Tuple:
+    def read_reply(self, serial_connection: serial.Serial) -> Tuple:
         frame_type = self.frame_type["type"]
         if frame_type in (
             Data.AnswerVoltage,
@@ -438,28 +438,25 @@ class DataReader(Thread):
         """
         Frage Kapazität, Status und Ladung ab
         """
-        log.info("Frage Kapazität ab")
-
-        # ==============================
-        send_one_query(query_capacity())
-        _, values = self.answer_queue.get()
-        capacity = values[0]
-        log.info(f"Kapazität ist {capacity:.0f} Ah")
-        # ==============================
-
-        self.capacity = capacity
-        self.current_values["capacity"] = capacity
-        self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
-
-        # send_one_query(query_battery_on())
-        # antwort verwerfen
-        # self.answer_queue.get()
-
-        send_one_query(query_load())
-        _, values = self.answer_queue.get()
-        charge = values[0]
-        self.current_values["charge"] = charge
-        log.info(f"Ladung beträgt {charge:.0f} Ah.")
+        # log.info("Frage Kapazität ab")
+        #
+        # # ==============================
+        # send_one_query(query_capacity())
+        # _, values = self.answer_queue.get()
+        # capacity = values[0]
+        # log.info(f"Kapazität ist {capacity:.0f} Ah")
+        # # ==============================
+        #
+        # self.capacity = capacity
+        # self.current_values["capacity"] = capacity
+        # self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
+        #
+        # send_one_query(query_load())
+        # _, values = self.answer_queue.get()
+        # charge = values[0]
+        # self.current_values["charge"] = charge
+        # log.info(f"Ladung beträgt {charge:.0f} Ah.")
+        send_many_queries([query_capacity(), query_load(), query_battery_on()])
 
     def run(self) -> None:
         """
@@ -556,7 +553,9 @@ class DataReader(Thread):
     def handle_queries(self) -> None:
         for frame_type, values in self.answer_queue.get_many():
             frame_type = frame_type["type"]
-            if frame_type is Data.AnswerVoltage:
+            if frame_type is Data.AnswerCapacity:
+                self.current_values["capacity"] = values[0]
+            elif frame_type is Data.AnswerVoltage:
                 self.current_values["voltage"] = values[0]
             elif frame_type is Data.AnswerCurrent:
                 self.current_values["current"] = values[0]
@@ -660,28 +659,33 @@ class ManyQueue(Queue, GetMany):
     """
 
 
-def command_loop() -> None:
-    ctx = zmq.Context()
-    # noinspection PyUnresolvedReferences
-    sock = ctx.socket(zmq.SUB)
-    sock.bind("tcp://127.0.0.1:4000")
-    sock.subscribe(Commands.topic.value)
-    while True:
-        topic, cmd = sock.recv_multipart()
-        if cmd == Commands.on.value:
-            log.info("Set Battery on")
-            send_command(set_battery_on())
-        elif cmd == Commands.off.value:
-            log.info("Set Battery off")
-            send_command(set_battery_off())
-        elif cmd == Commands.reset.value:
-            log.info("Reset battery")
-            send_command(set_reset_battery())
-        elif cmd == Commands.ack.value:
-            log.info("Send Ack")
-            send_command(set_reset_alarm())
-        elif cmd == Commands.live.value:
-            query_scheduler.live()
+class CommandLoop(Thread):
+    def __init__(self, addr):
+        super().__init__()
+        self.ctx = zmq.Context()
+        # noinspection PyUnresolvedReferences
+        self.addr = addr
+        self.sock = self.ctx.socket(zmq.SUB)
+        self.sock.bind(addr)
+        self.sock.subscribe(Commands.topic.value)
+
+    def run(self):
+        while True:
+            topic, cmd = self.sock.recv_multipart()
+            if cmd == Commands.on.value:
+                log.info("Set Battery on")
+                send_command(set_battery_on())
+            elif cmd == Commands.off.value:
+                log.info("Set Battery off")
+                send_command(set_battery_off())
+            elif cmd == Commands.reset.value:
+                log.info("Reset battery")
+                send_command(set_reset_battery())
+            elif cmd == Commands.ack.value:
+                log.info("Send Ack")
+                send_command(set_reset_alarm())
+            elif cmd == Commands.live.value:
+                query_scheduler.live()
 
 
 class SerialTxLock:
@@ -691,29 +695,32 @@ class SerialTxLock:
 
     def __init__(
         self,
-        timeout: Union[float, int] = 300,
+        txd_timeout: Union[float, int] = 300,
+        rxd_timeout: Union[float, int] = 10_000,
+        penalty_time: Union[float, int] = 10_000,
         txd_enable_pin: int = TXD_EN,
         txd_sense_pin: int = TXD_SENSE,
         rxd_sense_pin: int = RXD_SENSE,
     ):
-        self.timeout = int(timeout)
+        self.txd_timeout = int(txd_timeout)
+        self.rxd_timeout = int(rxd_timeout)
         self.txd_enable = txd_enable_pin
         self.txd_sense = txd_sense_pin
         self.rxd_sense = rxd_sense_pin
+        self.penalty_time = penalty_time
+        self.penalty = False
 
     def __enter__(self):
-        # log.debug("Betrete Serial-TxD-Lock")
-        # log.critical("tx_sense_wait")
         self.txd_sense_wait()
-        # log.critical("enable_txd")
         self.enable_txd()
-        # log.critical("rxd_sense_wait")
-        self.rxd_sense_wait()
-        # log.critical("Now in context. Sending and reading.")
+        if self.rxd_sense_wait():
+            self.penalty = True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable_txd()
-        # log.debug("Verlasse Serial-TxD-Lock")
+        if self.penalty:
+            self.penalty = False
+            time.sleep(self.penalty_time / 1000)
 
     def enable_txd(self):
         GPIO.output(self.txd_enable, False)
@@ -721,15 +728,19 @@ class SerialTxLock:
     def disable_txd(self):
         GPIO.output(self.txd_enable, True)
 
-    def rxd_sense_wait(self) -> None:
-        # log.critical(f"RXD_SENSE={GPIO.input(self.rxd_sense)}")
+    def rxd_sense_wait(self) -> bool:
         if not GPIO.input(self.rxd_sense):
-            GPIO.wait_for_edge(self.rxd_sense, GPIO.RISING)
+            result = GPIO.wait_for_edge(self.rxd_sense, GPIO.RISING, timeout=self.rxd_timeout)
+            if result is None:
+                log.critical("Timeout bei der Antwort")
+                return False
+            else:
+                return True
 
     def txd_sense_wait(self) -> None:
         while True:
             if (
-                GPIO.wait_for_edge(self.txd_sense, GPIO.FALLING, timeout=self.timeout)
+                GPIO.wait_for_edge(self.txd_sense, GPIO.FALLING, timeout=self.txd_timeout)
                 is None
             ):
                 break
@@ -750,7 +761,7 @@ class SerialServer(Thread):
     ) -> None:
         super().__init__()
         self.serial = serial.Serial(
-            port, baudrate, bytesize, parity, stopbits, timeout=1
+            port, baudrate, bytesize, parity, stopbits, timeout=10
         )
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
@@ -764,8 +775,8 @@ class SerialServer(Thread):
             f_type = query_frame.frame_type["type"]
             # noinspection PyUnresolvedReferences
             log.debug(f"Anfrage: {f_type.value}")
-        except (ValueError, AttributeError) as e:
-            log.debug(f"Error: {e}")
+        except (ValueError, AttributeError):
+            pass
 
     @staticmethod
     def log_answer(rep: FrameParser):
@@ -777,19 +788,25 @@ class SerialServer(Thread):
             log.debug(f"Error: {e}")
 
     def read_data(self):
-        data = self.serial.read(1)
+        data = b"\x00"
+        for _ in range(3):
+            data = self.serial.read(1)
+            if data != b"x\00":
+                break
+        else:
+            return
+
         rep = FrameParser.from_bytes(data)
         if not rep.is_zero():
             try:
                 values = rep.read_reply(self.serial)
-            except (TypeError, ValueError) as e:
+            except (TypeError, ValueError, struct.error, serial.SerialException) as e:
                 log.debug(e)
             else:
                 self.receiver_queue.put((rep.frame_type, values))
                 self.log_answer(rep)
 
     def run(self) -> None:
-
         while True:
             queries = self.sender_queue.get_many()
             if queries:
@@ -803,13 +820,12 @@ class SerialServer(Thread):
 
                     # Daten nach den Anfragen lesen
                     time.sleep(0.3 + 0.2 * len(queries))
-                    for _ in range(len(queries)):
+                    for _ in queries:
                         self.read_data()
 
             # Lese restliche Daten
             if self.serial.in_waiting:
                 self.read_data()
-                # self.serial.flushInput()
             time.sleep(0.1)
 
 
@@ -970,7 +986,7 @@ def setup_gpio():
     GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
 
 
-basicConfig(level=DEBUG)
+basicConfig(level=INFO)
 log = getLogger("Server")
 serial_sender_queue = ManyPriorityQueue()
 serial_receiver_queue = ManyQueue()
@@ -991,7 +1007,6 @@ QUERIES_NORMAL: QueriesType = [
     (query_cell_temperature(), 5 * 60),
     *[(query_cell_voltage(n), 5 * 60) for n in range(4)],
     (query_error_flags(), 60),
-    # (query_configuration(), 1),
 ]
 
 
@@ -1013,7 +1028,7 @@ if __name__ == "__main__":
     serial_server.start()
 
     log.debug("Starte Befehlsempfänger")
-    command_server = Thread(target=command_loop)
+    command_server = CommandLoop(addr="tcp://127.0.0.1:4000")
     command_server.start()
 
     log.debug("Starte Datenlogger")

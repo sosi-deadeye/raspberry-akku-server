@@ -95,7 +95,7 @@ def plot(session: Session, cycle: int, history: Union[float, int]) -> bytes:
     plt.tight_layout()
 
     image = BytesIO()
-    plt.savefig(image, format="svg")
+    plt.savefig(image, format="png")
     plt.close()
     image.seek(0)
     return image.read()
