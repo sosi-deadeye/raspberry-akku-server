@@ -697,7 +697,7 @@ class SerialTxLock:
         self,
         txd_timeout: Union[float, int] = 300,
         rxd_timeout: Union[float, int] = 10_000,
-        penalty_time: Union[float, int] = 10_000,
+        penalty_time: Union[float, int] = 2_000,
         txd_enable_pin: int = TXD_EN,
         txd_sense_pin: int = TXD_SENSE,
         rxd_sense_pin: int = RXD_SENSE,
