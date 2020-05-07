@@ -12,19 +12,7 @@ from socket import (
 )
 from threading import Thread
 
-
-import rich
-
-# from ipaddress import ip_interface
-# from netifaces import interfaces, ifaddresses
-
-
-# def get_interface_ips():
-#     return [
-#         ip_interface(addr["addr"] + "/" + addr["netmask"])
-#         for res in interfaces()
-#         for addr in ifaddresses(res).get(AF_INET, [])
-#     ]
+import current_values
 
 
 class Nodes:
@@ -74,7 +62,6 @@ class NodeListener(Thread):
 
     def run(self):
         while True:
-            rich.print(self.clients.nodes)
             try:
                 client_data, client_addr = self.receiver.recvfrom(4096)
             except SockTimeout:
@@ -87,7 +74,7 @@ class NodeListener(Thread):
 class ServiceAnnouncer(Thread):
     def __init__(self, *args, port=2020, **kwargs):
         super().__init__(*args, **kwargs)
-        # self.daemon = True
+        self.daemon = True
         self.hostname = gethostname()
         self.port = port
         self.sender = socket(AF_INET, SOCK_DGRAM)
@@ -96,14 +83,34 @@ class ServiceAnnouncer(Thread):
     def run(self):
         data = {"hostname": self.hostname}
         while True:
+            data.update({"payload": current_values.get_values()})
             raw = pickle.dumps(data)
             self.sender.sendto(raw, ("255.255.255.255", self.port))
             time.sleep(2)
 
 
-nodes = Nodes()
-sa = ServiceAnnouncer()
-nl = NodeListener(nodes=nodes)
+class NodeServer:
+    def __init__(self, port=2020):
+        self._nodes = Nodes()
+        self.sa = ServiceAnnouncer()
+        self.nl = NodeListener(nodes=self._nodes)
 
-sa.start()
-nl.start()
+    def start(self):
+        self.sa.start()
+        self.nl.start()
+
+    @property
+    def nodes(self):
+        current_nodes = self._nodes.nodes.copy()
+        return {payload["hostname"]: addr[0] for addr, payload in current_nodes.items()}
+
+
+if __name__ == "__main__":
+    node_server = NodeServer()
+    node_server.start()
+    try:
+        while True:
+            time.sleep(2)
+            print(node_server.nodes)
+    except KeyboardInterrupt:
+        pass

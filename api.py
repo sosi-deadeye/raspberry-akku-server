@@ -30,6 +30,8 @@ import scan_wlan
 import statistiken
 import wlanpw
 import wpa_passphrase
+import nodes
+
 
 session = database.Session()
 templates = Jinja2Templates(directory="templates")
@@ -367,6 +369,16 @@ async def redoc_html():
     )
 
 
+@app.get("/api/nodes")
+async def get_email(request: Request):
+    return node_server.nodes
+
+
+@app.get("/nodes")
+async def get_email(request: Request):
+    return templates.TemplateResponse("nodes.html", {"request": request, "nodes": node_server.nodes,})
+
+
 if __name__ in ("__main__", "api"):
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
@@ -375,4 +387,6 @@ if __name__ in ("__main__", "api"):
     print("ZMQ started...")
     graph_busy = asyncio.Semaphore()
     executor = ThreadPoolExecutor(max_workers=2)
+    node_server = nodes.NodeServer()
+    node_server.start()
     loop = asyncio.get_event_loop()
