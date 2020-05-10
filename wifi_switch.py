@@ -39,11 +39,13 @@ class State:
                 call(['systemctl', 'start', 'wlan-ap'])
                 call(['ifup', 'ap0'])
                 call(['systemctl', 'start', 'hostapd'])
+                call(['ip', 'route', 'add', 'default', 'via', '192.168.0.1', 'dev', 'ap0'])
                 self._state = value
                 buzzer.beep(1, 1, n=2)
             elif value == 'wlan0':
                 print('Connecting to hotspot')
                 led.blink(0.1, 0.1)
+                call(['ip', 'route', 'del', 'default', 'via', '192.168.0.1', 'dev', 'ap0'])
                 call(['systemctl', 'stop', 'hostapd'])
                 call(['ifdown', 'ap0'])
                 call(['systemctl', 'start', 'wlan-ap-del'])
