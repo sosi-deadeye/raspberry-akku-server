@@ -41,11 +41,15 @@ class NodeListener(Thread):
         self.daemon = True
         self.hostname = gethostname()
         self.port = port
+        self.clients = nodes or Nodes()
+        self.receiver = None
+        self.create_socket()
+
+    def create_socket(self):
         self.receiver = socket(AF_INET, SOCK_DGRAM)
         self.receiver.setsockopt(SOL_SOCKET, SO_REUSEPORT, True)
         self.receiver.settimeout(2)
         self.receiver.bind(("255.255.255.255", self.port))
-        self.clients = nodes or Nodes()
 
     def handle_data(self, client_data, client_addr):
         try:
@@ -66,6 +70,13 @@ class NodeListener(Thread):
                 client_data, client_addr = self.receiver.recvfrom(4096)
             except SockTimeout:
                 pass
+            except OSError:
+                print("IP has been changed, resetting receiver socket")
+                self.receiver.close()
+                del self.receiver
+                time.sleep(10)
+                print("Creating new receiver socket")
+                self.create_socket()
             else:
                 self.handle_data(client_data, client_addr)
             time.sleep(0.05)
@@ -77,6 +88,10 @@ class ServiceAnnouncer(Thread):
         self.daemon = True
         self.hostname = gethostname()
         self.port = port
+        self.sender = None
+        self.create_socket()
+
+    def create_socket(self):
         self.sender = socket(AF_INET, SOCK_DGRAM)
         self.sender.setsockopt(SOL_SOCKET, SO_BROADCAST, True)
 
@@ -85,7 +100,15 @@ class ServiceAnnouncer(Thread):
         while True:
             data.update({"payload": current_values.get_values()})
             raw = pickle.dumps(data)
-            self.sender.sendto(raw, ("255.255.255.255", self.port))
+            try:
+                self.sender.sendto(raw, ("255.255.255.255", self.port))
+            except OSError:
+                print("IP has been changed, resetting sender socket")
+                self.sender.close()
+                del self.sender
+                time.sleep(10)
+                print("Creating new sender socket")
+                self.create_socket()
             time.sleep(2)
 
 
