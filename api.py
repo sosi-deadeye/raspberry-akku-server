@@ -216,14 +216,24 @@ async def notify_by_email(topic: str):
 
 @app.get("/api/internet")
 async def get_wlan(request: Request):
+    data = None
+    ssid = ""
+    psk = ""
     try:
         data = Path("/etc/wpa_supplicant/wpa_supplicant.conf").read_text()
-        ssid = re.search(r"ssid=(.+)", data).group(1).replace('"', "")
-        password = re.search(r"# psk=(.+)", data).group(1).replace('"', "")
-    except Exception as e:
-        return str(e)
+    except Exception:
+        pass
+
+    if data:
+        ssid_match = re.search(r'ssid\s*=\s*"(.+)"', data)
+        psk_match = re.search(r'#\s*psk\s*=\s*"(.+)"', data)
+
+        if ssid_match and psk_match:
+            ssid = ssid_match.group(1)
+            psk = psk_match.group(1)
+
     return templates.TemplateResponse(
-        "wifi_internet.html", {"request": request, "ssid": ssid, "password": password,}
+        "wifi_internet.html", {"request": request, "ssid": ssid, "password": psk,}
     )
 
 
@@ -376,7 +386,9 @@ async def get_email(request: Request):
 
 @app.get("/nodes")
 async def get_email(request: Request):
-    return templates.TemplateResponse("nodes.html", {"request": request, "nodes": node_server.nodes,})
+    return templates.TemplateResponse(
+        "nodes.html", {"request": request, "nodes": node_server.nodes,}
+    )
 
 
 if __name__ in ("__main__", "api"):
