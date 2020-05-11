@@ -210,8 +210,7 @@ async def get_isbdb_smtp(request: Request, email: str):
 
 @app.get("/api/notify/{topic}")
 async def notify_by_email(topic: str):
-    await loop.run_in_executor(executor, notify.send_report, topic)
-    return topic
+    return await loop.run_in_executor(executor, notify.send_report, topic)
 
 
 @app.get("/api/internet")
