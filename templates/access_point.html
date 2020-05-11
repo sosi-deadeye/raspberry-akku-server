@@ -1,33 +1,57 @@
-<!DOCTYPE html>        
-<html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-<title>Akku - WLAN Passwort</title>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
-</head>                  
+    <title>Akku - WLAN Passwort</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
 <body>
 <div class="container">
-<h1 class="text-center text-success">Einstellungen</h1>
-<h2 class="text-center text-success">WLAN Passwort</h2>
-<form class="p-3 mb-2 bg-dark text-white" action="/api/set-ap-pw" method="post" class="p-3 mb-2 bg-dark text-white">
-  <div class="form-group">
-    <label for="password">Passwort</label>
-    <input type="text" class="form-control" id="password" name="password" placeholder="z.B. 12345678" value="{{password}}" required>
-  <br />
-  <button type="submit" class="btn btn-primary">Passwort setzen</button>
-  <br /><br />
-  <div class="text-warning">
-  Um das Modul vor fremdem Zugriff zu schützen, bitte ein Passwort vergeben.
-  <br />
-  Das Passwort muss aus 8 Zeichen bestehen.
-  </div>
-  <br />
-  <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
+    <h1 class="text-center text-success">Einstellungen</h1>
+    <h2 class="text-center text-success">WLAN Passwort</h2>
+    <form class="p-3 mb-2 bg-dark text-white" action="/api/set-ap-pw" method="post">
+        <div class="form-group">
+            <label for="password">Passwort</label>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Passwort" required>
+            <br/>
 
-</form>
+            <label for="confirm_password">Passwort bestätigen</label>
+            <input type="password" class="form-control" id="confirm_password" placeholder="Passwort bestätigen"
+                   required>
+            <br/>
+
+            <button type="submit" class="btn btn-primary">Passwort setzen</button>
+            <br/><br/>
+            <div class="text-warning">
+                Um das Modul vor fremdem Zugriff zu schützen, bitte ein Passwort vergeben.
+                <br/>
+                Das Passwort muss mindestens aus 8 Zeichen bestehen.
+            </div>
+            <br/>
+            <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
+
+    </form>
 </div>
+
+
+<script type="text/javascript">
+    var password = document.getElementById("password")
+        , confirm_password = document.getElementById("confirm_password");
+
+    function validatePassword() {
+        if (password.value !== confirm_password.value) {
+            confirm_password.setCustomValidity("Passwörter stimmen nicht überein");
+        } else {
+            confirm_password.setCustomValidity('');
+        }
+    }
+
+    password.onchange = validatePassword;
+    confirm_password.onkeyup = validatePassword;
+</script>
+
+
 <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
 <script src="/vendor/popper/popper.min.js"></script>
 <script src="/vendor/bootstrap/js/bootstrap.min.js"></script>

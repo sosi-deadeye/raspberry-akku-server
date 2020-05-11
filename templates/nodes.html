@@ -1,32 +1,33 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<title>Weitere Zellen</title>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
-</head>                  
+    <title>Weitere Zellen</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
 <body>
 
 <div class="container">
     {% if nodes %}
-    <div class="card-deck">
-    {%- for name, addr in nodes.items() %}
-    {%- for idx in range(10) %}
-        <div class="card mb-4">
-          <!-- <img class="card-img-top" src="..." alt="Card image cap"> -->
-          <div class="card-body">
-            <h5 class="card-title">{{ name }}</h5>
-            <p class="card-text">{{ addr }}</p>
-            <p class="card-link btn btn-success" href="{{ 'http://' + addr + '/api/aktuelle_werte' }}">Seite öffnen</p>
-          </div>
+        <div class="card-deck">
+            {%- for name, addr in nodes.items() %}
+                {%- for idx in range(10) %}
+                    <div class="card mb-4">
+                        <!-- <img class="card-img-top" src="..." alt="Card image cap"> -->
+                        <div class="card-body">
+                            <h5 class="card-title">{{ name }}</h5>
+                            <p class="card-text">{{ addr }}</p>
+                            <p class="card-link btn btn-success" href="{{ 'http://' + addr + '/api/aktuelle_werte' }}">
+                                Seite öffnen</p>
+                        </div>
+                    </div>
+                    <div class="w-100 d-md-flex"><!-- wrap every 2 on sm--></div>
+                {% endfor -%}
+            {% endfor -%}
         </div>
-        <div class="w-100 d-md-flex"><!-- wrap every 2 on sm--></div>
-    {% endfor -%}
-    {% endfor -%}
-    </div>
     {% else %}
-    <h4 class="bg-warning">Keine anderen WLAN-Module gefunden</h4>
+        <h4 class="bg-warning">Keine anderen WLAN-Module gefunden</h4>
     {% endif %}
 </div>
 
