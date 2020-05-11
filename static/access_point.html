@@ -1,0 +1,34 @@
+<!DOCTYPE html>        
+<html>
+<html lang="de">
+<head>
+<title>Akku - WLAN Passwort</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>                  
+<body>
+<div class="container">
+<h1 class="text-center text-success">Einstellungen</h1>
+<h2 class="text-center text-success">WLAN Passwort</h2>
+<form type="submit" action="/api/set-ap-pw" method="post" class="p-3 mb-2 bg-dark text-white">
+  <div class="form-group">
+    <label for="password">Passwort</label>
+    <input type="text" class="form-control" id="password" name="password" placeholder="12345678" required>
+  <button type="submit" class="btn btn-primary">Passwort setzen</button>
+  <br /><br />
+  <div class="text-info">
+  Um das Modul vor fremdem Zugriff zu schützen, bitte ein Passwort vergeben.
+  <br />
+  Das Passwort muss aus 8 Zeichen bestehen.
+  </div>
+  <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
+
+</form>
+</div>
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="/vendor/sweetalert/sweetalert.min.js"></script>
+</body>
+</html>
