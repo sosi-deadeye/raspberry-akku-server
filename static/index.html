@@ -148,7 +148,7 @@
             document.getElementById('charge_rel').innerText = myJson["charge_rel"].toFixed(0);
             document.getElementById('voltage').innerText = myJson["voltage"].toFixed(2);
             var current = myJson["current"].toFixed(2);
-            if (current > -0.9 & current < 0.9) {
+            if (current > -0.9 && current < 0.9) {
                 current = 0.0
             }
             document.getElementById('current').innerText = current;
@@ -164,18 +164,18 @@
             document.getElementById('temperature').innerText = myJson["temperature"].toFixed(1);
             document.getElementById('error').innerText = myJson["errors"];
         }).catch(error => {
-            document.getElementById('capacity').innerText = "666";
-            document.getElementById('charge').innerText = "666";
-            document.getElementById('charge_rel').innerText = "666";
-            document.getElementById('voltage').innerText = "666";
-            document.getElementById('current').innerText = "666";
-            document.getElementById('power').innerText = "666";
-            document.getElementById('cell1').innerText = "666";
-            document.getElementById('cell2').innerText = "666";
-            document.getElementById('cell3').innerText = "666";
-            document.getElementById('cell4').innerText = "666";
-            document.getElementById('temperature').innerText = "666";
-            document.getElementById('error').innerText = "666";
+            document.getElementById('capacity').innerText = "#";
+            document.getElementById('charge').innerText = "#";
+            document.getElementById('charge_rel').innerText = "#";
+            document.getElementById('voltage').innerText = "#";
+            document.getElementById('current').innerText = "#";
+            document.getElementById('power').innerText = "#";
+            document.getElementById('cell1').innerText = "#";
+            document.getElementById('cell2').innerText = "#";
+            document.getElementById('cell3').innerText = "#";
+            document.getElementById('cell4').innerText = "#";
+            document.getElementById('temperature').innerText = "#";
+            document.getElementById('error').innerText = "";
         })
     }
 </script>
@@ -213,13 +213,13 @@
                     }
                 });
             }, timeout);
-        };
+        }
         on_button = document.getElementById(elementid);
         on_button.addEventListener('mousedown', do_action);
         on_button.addEventListener('touchstart', do_action);
         on_button.addEventListener('touchend', cancel_timer);
         on_button.addEventListener('mouseup', cancel_timer);
-    };
+    }
 
 
     register_event("/api/on", "on", "Akku wird eingeschaltet", "", "Kein Erfolg", 2000);
