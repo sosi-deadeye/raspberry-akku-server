@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import time
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -117,6 +118,8 @@ def iwlist():
 async def get_current_values():
     control.send_multipart([b"CONTROL", b"LIVE"])
     values = current_values.get_values()
+    if (time.monotonic() - values["timestamp"]) > 10:
+        return {key: "#" for key in values}
     values["power"] = values["voltage"] * values["current"]
     try:
         values["charge_rel"] = values["charge"] / values["capacity"] * 100

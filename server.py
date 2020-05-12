@@ -381,6 +381,7 @@ class DataReader(Thread):
         self.stats_charge: deque = deque(maxlen=4)
         self.timedelta_queue: Optional[Queue] = None
         self.notified: bool = False
+        self.last_answer = 0
         super().__init__()
 
     def handle_error(self, error_flags: int) -> None:
@@ -407,7 +408,7 @@ class DataReader(Thread):
             self.current_values["current"],
             self.current_values["charge"],
             self.current_values["temperature"],
-            datetime.now().timestamp(),
+            self.last_answer,
             *self.current_values["cell_voltages"],
         )
         set_current_values(current_data)
@@ -434,30 +435,6 @@ class DataReader(Thread):
                 stat.timestamp = corrected_timestamp
                 self.session.merge(stat)
 
-    def get_important_values(self) -> None:
-        """
-        Frage Kapazität, Status und Ladung ab
-        """
-        # log.info("Frage Kapazität ab")
-        #
-        # # ==============================
-        # send_one_query(query_capacity())
-        # _, values = self.answer_queue.get()
-        # capacity = values[0]
-        # log.info(f"Kapazität ist {capacity:.0f} Ah")
-        # # ==============================
-        #
-        # self.capacity = capacity
-        # self.current_values["capacity"] = capacity
-        # self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
-        #
-        # send_one_query(query_load())
-        # _, values = self.answer_queue.get()
-        # charge = values[0]
-        # self.current_values["charge"] = charge
-        # log.info(f"Ladung beträgt {charge:.0f} Ah.")
-        send_many_queries([query_capacity(), query_load(), query_battery_on()])
-
     def run(self) -> None:
         """
         Diese Funktion wird indirekt durch die Methode start() aufgerufen.
@@ -465,7 +442,8 @@ class DataReader(Thread):
         log.debug("Datalogger: Starte Zeitüberwachung")
         self.timedelta_queue: Queue = timedaemon.start()
         log.info(f"Zyklus: {self.cycle}")
-        self.get_important_values()
+        log.info("Sende erste Abfragen")
+        send_many_queries([query_capacity(), query_load(), query_battery_on()])
         log.info("Datalogger: Betrete Endlosschleife")
         while True:
             # Prüfe ob sich die Zeit geändert hat
@@ -544,8 +522,12 @@ class DataReader(Thread):
             self.row += 1
             self.db_next_update = time.monotonic() + self.db_update_interval
 
-    @staticmethod
-    def send_queries(queries: List[bytes, ...]) -> None:
+    def send_queries(self, queries: List[bytes, ...]) -> None:
+        # Prüfe Kapazität
+        if math.isclose(self.current_values["capacity"], 0):
+            log.info("Frage Kapazität erneut ab.")
+            send_many_queries([query_capacity()])
+
         if not queries:
             return
         send_many_queries(queries)
@@ -555,6 +537,7 @@ class DataReader(Thread):
             frame_type = frame_type["type"]
             if frame_type is Data.AnswerCapacity:
                 self.current_values["capacity"] = values[0]
+                # TODO in Datenbank schreiben
             elif frame_type is Data.AnswerVoltage:
                 self.current_values["voltage"] = values[0]
             elif frame_type is Data.AnswerCurrent:
@@ -578,6 +561,7 @@ class DataReader(Thread):
             elif frame_type is Mode.AnswerSetOn:
                 self.session.add(State(cycle=self.cycle, row=self.row, onoff=True))
         self.update_current_values()
+        self.last_answer = time.monotonic()
 
 
 class Commands(Enum):
@@ -636,7 +620,7 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
     Extended PriorityQueue
     """
 
-    def get_many(self, timout=0.5, max_queue_size=5):
+    def get_many(self, timout=0.5, max_queue_size=6):
         """
         Return as many queries as possible in a list
         Priority is removed from list
@@ -997,7 +981,7 @@ QUERIES_LIVE: QueriesType = [
     (query_load(), 60),
     (query_cell_temperature(), 60),
     *[(query_cell_voltage(n), 60) for n in range(4)],
-    (query_error_flags(), 15),
+    (query_error_flags(), 2),
 ]
 
 QUERIES_NORMAL: QueriesType = [
