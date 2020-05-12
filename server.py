@@ -351,7 +351,6 @@ class DataReader(Thread):
         self.queries: QueryScheduler = queries
         self.session = Session()
         self.cycle: int = set_cycle(self.session)
-        self.capacity: Optional[float] = None
         self.last_error: Optional[int] = None
         self.last_error_flags: Optional[int] = None
         self.error_topics: list = [
@@ -443,7 +442,7 @@ class DataReader(Thread):
         self.timedelta_queue: Queue = timedaemon.start()
         log.info(f"Zyklus: {self.cycle}")
         log.info("Sende erste Abfragen")
-        send_many_queries([query_capacity(), query_load(), query_battery_on()])
+        # send_many_queries([query_capacity(), query_load(), query_battery_on()])
         log.info("Datalogger: Betrete Endlosschleife")
         while True:
             # Prüfe ob sich die Zeit geändert hat
@@ -467,13 +466,15 @@ class DataReader(Thread):
         Ladung unter 15% ist -> E-Mail versenden
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
-        if self.capacity is not None and not math.isclose(self.capacity, 0):
+        if self.current_values["capacity"] is not None and not math.isclose(
+            self.current_values["capacity"], 0
+        ):
             try:
                 median_charge = statistics.median(self.stats_charge)
                 median_current = statistics.median(self.stats_current)
             except statistics.StatisticsError:
                 return
-            relative_load = (median_charge / self.capacity) * 100
+            relative_load = (median_charge / self.current_values["capacity"]) * 100
             # log.info(f'Relative Ladung {relative_load}')
             if not self.notified and 10 < relative_load < 15:
                 log.warning("Ladung unter 15%. E-Mail wird gesendet.")
@@ -525,7 +526,7 @@ class DataReader(Thread):
     def send_queries(self, queries: List[bytes, ...]) -> None:
         # Prüfe Kapazität
         if math.isclose(self.current_values["capacity"], 0):
-            log.info("Frage Kapazität erneut ab.")
+            log.info("Frage Kapazität ab.")
             send_many_queries([query_capacity()])
 
         if not queries:
@@ -535,9 +536,12 @@ class DataReader(Thread):
     def handle_queries(self) -> None:
         for frame_type, values in self.answer_queue.get_many():
             frame_type = frame_type["type"]
+            log.debug(f"Antwort: {frame_type} | Werte: {values}")
             if frame_type is Data.AnswerCapacity:
                 self.current_values["capacity"] = values[0]
-                # TODO in Datenbank schreiben
+                log.info(f"Kapazität: {values[0]}")
+                self.session.add(Configuration(capacity=values[0], cycle=self.cycle))
+                self.session.commit()
             elif frame_type is Data.AnswerVoltage:
                 self.current_values["voltage"] = values[0]
             elif frame_type is Data.AnswerCurrent:
@@ -714,7 +718,9 @@ class SerialTxLock:
 
     def rxd_sense_wait(self) -> bool:
         if not GPIO.input(self.rxd_sense):
-            result = GPIO.wait_for_edge(self.rxd_sense, GPIO.RISING, timeout=self.rxd_timeout)
+            result = GPIO.wait_for_edge(
+                self.rxd_sense, GPIO.RISING, timeout=self.rxd_timeout
+            )
             if result is None:
                 log.critical("Timeout bei der Antwort")
                 return False
@@ -724,7 +730,9 @@ class SerialTxLock:
     def txd_sense_wait(self) -> None:
         while True:
             if (
-                GPIO.wait_for_edge(self.txd_sense, GPIO.FALLING, timeout=self.txd_timeout)
+                GPIO.wait_for_edge(
+                    self.txd_sense, GPIO.FALLING, timeout=self.txd_timeout
+                )
                 is None
             ):
                 break

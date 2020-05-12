@@ -68,8 +68,8 @@ def plot(session: Session, cycle: int, history: Union[float, int]) -> bytes:
         .filter(Configuration.cycle == cycle)
         .first()
     )
-    if not capacity:
-        capacity = 120.0
+    if not capacity[0]:
+        capacity = 300.0
     else:
         capacity = capacity[0]
     capacity *= 1.1
