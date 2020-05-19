@@ -62,7 +62,7 @@ class NodeListener(Thread):
             return
 
         client_data["last_seen"] = time.monotonic()
-        self.clients.add(client_addr, client_data)
+        self.clients.add(client_addr[0], client_data)
 
     def run(self):
         while True:
@@ -124,8 +124,7 @@ class NodeServer:
 
     @property
     def nodes(self):
-        current_nodes = self._nodes.nodes.copy()
-        return {payload["hostname"]: addr[0] for addr, payload in current_nodes.items()}
+        return self._nodes.nodes.copy()
 
 
 if __name__ == "__main__":
