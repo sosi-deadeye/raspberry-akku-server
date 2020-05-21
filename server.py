@@ -256,7 +256,7 @@ class FrameParser:
             and self.service_bits == 0
         )
 
-    def read_reply(self, serial_connection: serial.Serial) -> Tuple:
+    def read_reply(self, buffer: bytearray) -> Tuple:
         frame_type = self.frame_type["type"]
         if frame_type in (
             Data.AnswerVoltage,
@@ -265,11 +265,14 @@ class FrameParser:
             Data.AnswerCapacity,
             Data.AnswerTemperature,
         ):
-            values = struct.unpack("<f", serial_connection.read(4))
+            values = struct.unpack("<f", buffer[:4])
+            buffer[:] = buffer[4:]
         elif frame_type is Data.AnswerCellVoltage:
-            values = struct.unpack("<Bf", serial_connection.read(5))
+            values = struct.unpack("<Bf", buffer[:5])
+            buffer[:] = buffer[5:]
         elif frame_type is Fault.AnswerErrorFlags:
-            values = struct.unpack("<H", serial_connection.read(2))
+            values = struct.unpack("<H", buffer[:2])
+            buffer[:] = buffer[2:]
         elif frame_type is Mode.AnswerSetOff:
             values = (False,)
         elif frame_type is Mode.AnswerSetOn:
@@ -284,8 +287,6 @@ class FrameParser:
         return values
 
     def is_reply(self, other) -> bool:
-        # if other.service_bits == 9:
-        #     print(other, other.frame_type)
         if other.service_bits != 1:
             return (
                 self.frame == other.frame
@@ -532,7 +533,7 @@ class DataReader(Thread):
     def handle_queries(self) -> None:
         for frame_type, values in self.answer_queue.get_many():
             frame_type = frame_type["type"]
-            log.debug(f"Antwort: {frame_type} | Werte: {values}")
+            # log.debug(f"Antwort: {frame_type} | Werte: {values}")
             if frame_type is Data.AnswerCapacity:
                 self.current_values["capacity"] = values[0]
                 log.info(f"Kapazität: {values[0]}")
@@ -776,37 +777,28 @@ class SerialServer(Thread):
             log.debug(f"Error: {e}")
 
     def read_data(self):
-        data = b"\x00"
-        for _ in range(3):
-            data = self.serial.read(1)
-            if data != b"x\00":
-                break
-        else:
-            return
-
-        rep = FrameParser.from_bytes(data)
-        if not rep.is_zero():
-            try:
-                values = rep.read_reply(self.serial)
-            except (TypeError, ValueError, struct.error, serial.SerialException) as e:
-                log.debug(repr(e))
-            else:
-                self.receiver_queue.put((rep.frame_type, values))
-                self.log_answer(rep)
+        buffer = bytearray(self.serial.read(self.serial.in_waiting).lstrip(b"\x00"))
+        while buffer:
+            rep = FrameParser.from_bytes(buffer.pop(0))
+            if not rep.is_zero():
+                try:
+                    values = rep.read_reply(buffer)
+                except (TypeError, ValueError, struct.error, serial.SerialException) as e:
+                    log.debug(repr(e))
+                else:
+                    self.receiver_queue.put((rep.frame_type, values))
+                    self.log_answer(rep)
 
     def run(self) -> None:
         while True:
             queries = self.sender_queue.get_many()
             if queries:
                 with self.serial_handshake:
-                    # time.sleep(0.1)
-                    # Anfrage senden
                     self.serial.write(b"".join(queries))
-                    self.serial.flush()
+                    # self.serial.flush()
                     for query in queries:
                         self.log_query(query)
 
-                    # Daten nach den Anfragen lesen
                     time.sleep(0.3 + 0.2 * len(queries))
                     for _ in queries:
                         self.read_data()
@@ -977,6 +969,7 @@ def setup_gpio():
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument("-d", action="store_true", help="Debug Modus")
+    parser.add_argument("-p", action="store_true", help="Test Modus")
     return parser.parse_args()
 
 
@@ -1009,25 +1002,26 @@ if __name__ == "__main__":
     setup_gpio()
     if args.d:
         log.setLevel(DEBUG)
-    log.debug("Starte QueryScheduler")
-    query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
+    if not args.p:
+        log.debug("Starte QueryScheduler")
+        query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
 
-    log.debug("Starte seriellen Server")
-    serial_server = SerialServer(
-        port="/dev/serial0",
-        baudrate=1000,
-        parity=serial.PARITY_EVEN,
-        bytesize=serial.EIGHTBITS,
-        stopbits=serial.STOPBITS_ONE,
-        sender_queue=serial_sender_queue,
-        receiver_queue=serial_receiver_queue,
-    )
-    serial_server.start()
+        log.debug("Starte seriellen Server")
+        serial_server = SerialServer(
+            port="/dev/serial0",
+            baudrate=1000,
+            parity=serial.PARITY_EVEN,
+            bytesize=serial.EIGHTBITS,
+            stopbits=serial.STOPBITS_ONE,
+            sender_queue=serial_sender_queue,
+            receiver_queue=serial_receiver_queue,
+        )
+        serial_server.start()
 
-    log.debug("Starte Befehlsempfänger")
-    command_server = CommandLoop(addr="tcp://127.0.0.1:4000")
-    command_server.start()
+        log.debug("Starte Befehlsempfänger")
+        command_server = CommandLoop(addr="tcp://127.0.0.1:4000")
+        command_server.start()
 
-    log.debug("Starte Datenlogger")
-    data_logger = DataReader(serial_receiver_queue, query_scheduler)
-    data_logger.start()
+        log.debug("Starte Datenlogger")
+        data_logger = DataReader(serial_receiver_queue, query_scheduler)
+        data_logger.start()
