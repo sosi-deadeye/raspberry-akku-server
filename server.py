@@ -5,8 +5,8 @@ import math
 import statistics
 import struct
 import time
+from argparse import ArgumentParser
 from collections import deque
-from datetime import datetime
 from enum import IntEnum, Enum
 from logging import getLogger, basicConfig, DEBUG, INFO
 from queue import Empty as QueueEmpty
@@ -454,9 +454,7 @@ class DataReader(Thread):
             self.handle_queries()
             self.database_insert()
             self.check_alert()
-
-            # 100 ms warten.
-            time.sleep(0.1)
+            # time.sleep(0.1)
 
     def check_alert(self) -> None:
         """
@@ -475,7 +473,6 @@ class DataReader(Thread):
             except statistics.StatisticsError:
                 return
             relative_load = (median_charge / self.current_values["capacity"]) * 100
-            # log.info(f'Relative Ladung {relative_load}')
             if not self.notified and 10 < relative_load < 15:
                 log.warning("Ladung unter 15%. E-Mail wird gesendet.")
                 notify_thread = Thread(
@@ -529,9 +526,8 @@ class DataReader(Thread):
             log.info("Frage Kapazität ab.")
             send_many_queries([query_capacity()])
 
-        if not queries:
-            return
-        send_many_queries(queries)
+        if queries:
+            send_many_queries(queries)
 
     def handle_queries(self) -> None:
         for frame_type, values in self.answer_queue.get_many():
@@ -793,7 +789,7 @@ class SerialServer(Thread):
             try:
                 values = rep.read_reply(self.serial)
             except (TypeError, ValueError, struct.error, serial.SerialException) as e:
-                log.debug(e)
+                log.debug(repr(e))
             else:
                 self.receiver_queue.put((rep.frame_type, values))
                 self.log_answer(rep)
@@ -978,6 +974,12 @@ def setup_gpio():
     GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
 
 
+def parse_args():
+    parser = ArgumentParser()
+    parser.add_argument("-d", action="store_true", help="Debug Modus")
+    return parser.parse_args()
+
+
 basicConfig(level=INFO)
 log = getLogger("Server")
 serial_sender_queue = ManyPriorityQueue()
@@ -1003,7 +1005,10 @@ QUERIES_NORMAL: QueriesType = [
 
 
 if __name__ == "__main__":
+    args = parse_args()
     setup_gpio()
+    if args.d:
+        log.setLevel(DEBUG)
     log.debug("Starte QueryScheduler")
     query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
 
