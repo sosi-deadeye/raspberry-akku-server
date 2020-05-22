@@ -21,7 +21,7 @@
         <div class="form-group">
             <label for="from">Benutzer-Login</label>
             <input type="text" class="form-control" name="email_login" id="from" aria-describedby="Absender-Login"
-                   placeholder="ist fast immer die eigene E-Mail" value={{ email_login }}>
+                   placeholder="ist fast immer die eigene E-Mail" value="{{ email_login }}">
         </div>
 
         <div class="form-group">
@@ -33,7 +33,7 @@
         <div class="form-group">
             <label class="text-warning" for="from">An*</label>
             <input type="email" class="form-control" name="email_to" id="from" aria-describedby="Absender"
-                   placeholder="E-Mail Adresse des Empfängers" value={{ email_to }}
+                   placeholder="E-Mail Adresse des Empfängers" value="{{ email_to }}"
             required>
         </div>
 
@@ -41,13 +41,13 @@
             <label for="smtp-server">SMTP-Server</label>
             <input type="text" class="form-control" id="smtp-server" name="email_smtp_server"
                    placeholder="z.B. securesmtp.t-online.de"
-                   value={{ email_smtp_server }}>
+                   value="{{ email_smtp_server }}">
         </div>
 
         <div class="form-group">
             <label for="smtp-port">SMTP-Port</label>
             <input type="number" class="form-control" id="smtp-port" name="email_smtp_port" placeholder="z.B. 587"
-                   value={{ email_smtp_port }} min="0" max="65535">
+                   value="{{ email_smtp_port }}" min="0" max="65535">
         </div>
 
         <div class="form-check">
