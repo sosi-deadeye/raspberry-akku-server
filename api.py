@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import base64
 import json
@@ -7,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from subprocess import call
-from typing import List
+from typing import List, Any, Optional
 
 import zmq
 from fastapi import FastAPI, Form
@@ -54,6 +56,23 @@ class Hotspots(BaseModel):
     aps: list = Field(..., title="SSID", description="Die ssid der gefundenen Hotspots")
 
 
+class NodeFields(BaseModel):
+    id: int = Field(..., title="Id", description="ID in der Tabelle")
+    row: int = Field(..., title="Zeile", description="Zeile")
+    cycle: int = Field(..., title="Zyklus", description="Zyklus")
+    capacity: float = Field(..., title="Kapazität", description="Kapazität in Ah")
+    error: int = Field(..., title="Fehlercode", description="Fehlercode dezimal")
+    voltage: float = Field(..., title="Spannung", description="Spannung in V")
+    current: float = Field(..., title="Strom", description="Strom in Ah")
+    charge: float = Field(..., title="Ladung", description="Ladung in Ah")
+    temperature: float = Field(
+        ..., title="Zelltemperatur", description="Temperatur in °C"
+    )
+    timestamp: datetime = Field(
+        ..., title="Zeitstempel", description="Zeitstempel UTC0"
+    )
+
+
 class CurrentValues(BaseModel):
     id: int = Field(..., title="Id", description="ID in der Tabelle")
     cycle: int = Field(..., title="Zyklus", description="Zyklus")
@@ -77,6 +96,7 @@ class CurrentValues(BaseModel):
     errors: str = Field(
         ..., title="Fehlercodes", description="Fehlercodes als lesbarer Text"
     )
+    nodes: dict = Field(..., title="Wlan-Module", description="Benachbarte WLAN-Module")
 
 
 class Error(BaseModel):
@@ -93,6 +113,71 @@ class Wlan(BaseModel):
 
 class Ap(BaseModel):
     password: str
+
+
+def get_nodes(node=None):
+    nodes = [
+        ip
+        for ip, node in sorted(
+            node_server.nodes.items(), key=lambda x: x[1]["hostname"]
+        )
+    ]
+    prev_node = ""
+    next_node = ""
+    if node and node in nodes:
+        index = nodes.index(node)
+        if index > 0:
+            prev_node = "/node/" + nodes[index - 1]
+        try:
+            next_node = "/node/" + nodes[index + 1]
+        except IndexError:
+            pass
+    elif nodes:
+        next_node = "/node/" + nodes[0]
+    return prev_node, next_node
+
+
+@app.get("/")
+async def index(request: Request):
+    """
+    Hauptseite
+    :return:
+    """
+    prev_node, next_node = get_nodes()
+    print(prev_node, next_node)
+    values = get_current_values()
+    # del values["nodes"]
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "hostname": hostname,
+            "prev_node": prev_node,
+            "next_node": next_node,
+            **values,
+        },
+    )
+
+
+@app.get("/node/{node}")
+async def index(request: Request, node: str):
+    """
+    Hauptseite
+    :return:
+    """
+    prev_node, next_node = get_nodes(node)
+    values = get_current_values()
+    print(prev_node)
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "hostname": hostname,
+            "prev_node": prev_node,
+            "next_node": next_node,
+            **values,
+        },
+    )
 
 
 @app.get("/api/statistics")
@@ -114,8 +199,7 @@ def iwlist():
     return {"aps": scan_wlan.get_cells()}
 
 
-@app.get("/api/aktuelle_werte", response_model=CurrentValues)
-async def get_current_values():
+def get_current_values():
     control.send_multipart([b"CONTROL", b"LIVE"])
     values = current_values.get_values()
     if (time.monotonic() - values["timestamp"]) > 10:
@@ -126,7 +210,13 @@ async def get_current_values():
     except ZeroDivisionError:
         values["charge_rel"] = 0
     values["errors"] = errors.get_short(values["error"])
+    values["nodes"] = node_server.nodes
     return values
+
+
+@app.get("/api/aktuelle_werte", response_model=CurrentValues)
+async def get_current_values_route():
+    return get_current_values()
 
 
 @app.get("/graph")
@@ -221,6 +311,8 @@ async def get_wlan(request: Request):
     data = None
     ssid = ""
     psk = ""
+    online = False
+
     try:
         data = Path("/etc/wpa_supplicant/wpa_supplicant.conf").read_text()
     except Exception:
@@ -234,22 +326,43 @@ async def get_wlan(request: Request):
             ssid = ssid_match.group(1)
             psk = psk_match.group(1)
 
+    if Path("/media/data/online").exists():
+        online = True
+
     return templates.TemplateResponse(
-        "wifi_internet.html", {"request": request, "ssid": ssid, "password": psk,}
+        "wifi_internet.html",
+        {"request": request, "ssid": ssid, "password": psk, "online": online},
     )
 
 
 @app.post("/api/internet")
-async def set_wlan(request: Request, ssid: str = Form(...), password: str = Form(...)):
+async def set_wlan(
+    request: Request,
+    ssid: str = Form(...),
+    password: str = Form(...),
+    online=Form(False),
+):
     try:
         wpa_passphrase.set_network(ssid, password)
     except ValueError:
         success = "Passwort ist zu kurz."
     else:
         success = "SSID und Passwort sind erfolgreich gesetzt worden."
+    online_file = Path("/media/data/online")
+    if online:
+        online_file.touch()
+    else:
+        online_file.unlink()
+
     return templates.TemplateResponse(
         "internet.html",
-        {"request": request, "ssid": ssid, "password": password, "success": success,},
+        {
+            "request": request,
+            "ssid": ssid,
+            "password": password,
+            "success": success,
+            "online": True,
+        },
     )
 
 
@@ -394,6 +507,7 @@ async def get_email(request: Request):
 
 
 if __name__ in ("__main__", "api"):
+    hostname = open("/etc/hostname").read().strip()
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
     control = ctx.socket(zmq.PUB)

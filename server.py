@@ -398,6 +398,7 @@ class DataReader(Thread):
                 Thread(target=notify.send_report, args=(error_text,)).start()
 
     def update_current_values(self) -> None:
+        self.last_answer = time.time()
         current_data = (
             self.row,
             self.row,
