@@ -54,28 +54,43 @@
                 </td>
                 <td>W</td>
             </tr>
-            <tr>
+            <tr id="tr_cell_upper">
+                <td>Obere Zellspannung</td>
+                <td>
+                    <div class="row justify-content-end" id="cell_high">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr id="tr_cell_lower">
+                <td>Untere Zellspannung</td>
+                <td>
+                    <div class="row justify-content-end" id="cell_low">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr id="tr_cell_1">
                 <td>Zelle 1</td>
                 <td>
                     <div class="row justify-content-end" id="cell1">#</div>
                 </td>
                 <td>V</td>
             </tr>
-            <tr>
+
+            <tr id="tr_cell_2">
                 <td>Zelle 2</td>
                 <td>
                     <div class="row justify-content-end" id="cell2">#</div>
                 </td>
                 <td>V</td>
             </tr>
-            <tr>
+            <tr id="tr_cell_3">
                 <td>Zelle 3</td>
                 <td>
                     <div class="row justify-content-end" id="cell3">#</div>
                 </td>
                 <td>V</td>
             </tr>
-            <tr>
+            <tr id="tr_cell_4">
                 <td>Zelle 4</td>
                 <td>
                     <div class="row justify-content-end" id="cell4">#</div>
@@ -139,6 +154,8 @@
 </div>
 
 <script type="text/javascript">
+    let first_run = true;
+
     function update() {
         fetch('/api/aktuelle_werte').then(function (response) {
             return response.json();
@@ -153,14 +170,34 @@
             }
             document.getElementById('current').innerText = current;
             if (current === 0) {
-                document.getElementById('power').innerText = 0
+                document.getElementById('power').innerText = "0";
             } else {
                 document.getElementById('power').innerText = myJson["power"].toFixed(2);
             }
-            document.getElementById('cell1').innerText = myJson["cell_voltages"][0].toFixed(2);
-            document.getElementById('cell2').innerText = myJson["cell_voltages"][1].toFixed(2);
-            document.getElementById('cell3').innerText = myJson["cell_voltages"][2].toFixed(2);
-            document.getElementById('cell4').innerText = myJson["cell_voltages"][3].toFixed(2);
+            lower_voltage = myJson["lower_cell_voltage"];
+            upper_voltage = myJson["upper_cell_voltage"];
+
+            if (first_run & lower_voltage) {
+                document.getElementById('tr_cell_1').remove();
+                document.getElementById('tr_cell_2').remove();
+                document.getElementById('tr_cell_3').remove();
+                document.getElementById('tr_cell_4').remove();
+                first_run = false;
+            }
+            else if (first_run) {
+                document.getElementById('tr_cell_lower').remove();
+                document.getElementById('tr_cell_upper').remove();
+                first_run = false;
+            }
+            if (! lower_voltage) {
+                document.getElementById('cell1').innerText = myJson["cell_voltages"][0].toFixed(2);
+                document.getElementById('cell2').innerText = myJson["cell_voltages"][1].toFixed(2);
+                document.getElementById('cell3').innerText = myJson["cell_voltages"][2].toFixed(2);
+                document.getElementById('cell4').innerText = myJson["cell_voltages"][3].toFixed(2);
+            } else {
+                document.getElementById('cell_low').innerText = lower_voltage.toFixed(2);
+                document.getElementById('cell_high').innerText = upper_voltage.toFixed(2);
+            }
             document.getElementById('temperature').innerText = myJson["temperature"].toFixed(1);
             document.getElementById('error').innerText = myJson["errors"];
         }).catch(error => {

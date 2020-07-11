@@ -77,6 +77,8 @@ class CurrentValues(BaseModel):
     errors: str = Field(
         ..., title="Fehlercodes", description="Fehlercodes als lesbarer Text"
     )
+    lower_cell_voltage: float = Field(None, title="Untere Zellspannung")
+    upper_cell_voltage: float = Field(None, title="Obere Zellspannung")
 
 
 class Error(BaseModel):
@@ -126,6 +128,13 @@ async def get_current_values():
     except ZeroDivisionError:
         values["charge_rel"] = 0
     values["errors"] = errors.get_short(values["error"])
+    print(values["voltage"])
+    if values["voltage"] > 16:
+        values["lower_cell_voltage"] = min(values["cell_voltages"])
+        values["upper_cell_voltage"] = max(values["cell_voltages"])
+    else:
+        values["lower_cell_voltage"] = None
+        values["upper_cell_voltage"] = None
     return values
 
 

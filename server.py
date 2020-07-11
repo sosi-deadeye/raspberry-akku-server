@@ -377,6 +377,7 @@ class DataReader(Thread):
         }
         self.db_update_interval: float = 60
         self.db_next_update: float = time.monotonic() + 120
+        self.start_time: float = time.monotonic()
         self.stats_current: deque = deque(maxlen=4)
         self.stats_charge: deque = deque(maxlen=4)
         self.timedelta_queue: Optional[Queue] = None
@@ -465,6 +466,29 @@ class DataReader(Thread):
         Ladung unter 15% ist -> E-Mail versenden
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
+
+        if time.monotonic() - self.start_time < 30 * 60:
+            return
+
+        warning_limit = 15
+        off_limit = 10
+        limits = {
+            (8, 16): {
+                    "warning": 15,
+                    "off": 10,
+                },
+            (16, 60):
+                {
+                    "warning": 15,
+                    "off": 95,
+                }
+        }
+
+        for (lower, upper), config in limits.items():
+            if lower < self.current_values["voltage"] < upper:
+                warning_limit = config["warning"]
+                off_limit = config["off"]
+
         if self.current_values["capacity"] is not None and not math.isclose(
             self.current_values["capacity"], 0
         ):
@@ -474,30 +498,31 @@ class DataReader(Thread):
             except statistics.StatisticsError:
                 return
             relative_load = (median_charge / self.current_values["capacity"]) * 100
-            if not self.notified and 10 < relative_load < 15:
-                log.warning("Ladung unter 15%. E-Mail wird gesendet.")
-                notify_thread = Thread(
-                    target=notify.send_report,
-                    args=(
-                        "Die Ladung des Akkus liegt zwuschen 10 und 15%. Bitte nachladen.",
-                    ),
-                )
-                notify_thread.start()
-                self.notified = True
-            elif relative_load < 10 and median_current < 0:
-                notify.send_report(
-                    "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
-                )
-                log.warning(f"Achtung Ladung: {relative_load:.1f} %")
-                GPIO.setup(5, GPIO.OUT)
-                GPIO.output(5, True)
-                time.sleep(2)
-                GPIO.output(5, False)
-                time.sleep(1)
-                GPIO.output(5, True)
-                time.sleep(2)
-                GPIO.output(5, False)
-                call(["shutdown", "-h", "0"])
+            if self.current_values["current"] < 1.0:
+                if not self.notified and off_limit < relative_load < warning_limit:
+                    log.warning("Ladung unter 15%. E-Mail wird gesendet.")
+                    notify_thread = Thread(
+                        target=notify.send_report,
+                        args=(
+                            "Die Ladung des Akkus liegt zwuschen 10 und 15%. Bitte nachladen.",
+                        ),
+                    )
+                    notify_thread.start()
+                    self.notified = True
+                elif relative_load < off_limit and median_current < 0:
+                    notify.send_report(
+                        "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
+                    )
+                    log.warning(f"Achtung Ladung: {relative_load:.1f} %")
+                    GPIO.setup(5, GPIO.OUT)
+                    GPIO.output(5, True)
+                    time.sleep(2)
+                    GPIO.output(5, False)
+                    time.sleep(1)
+                    GPIO.output(5, True)
+                    time.sleep(2)
+                    GPIO.output(5, False)
+                    call(["shutdown", "-h", "0"])
 
     def database_insert(self) -> None:
         """
