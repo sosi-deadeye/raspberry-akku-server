@@ -626,7 +626,6 @@ class GetMany:
                     break
                 else:
                     queries.append(item)
-            return queries
         else:
             for _ in range(max_queue_size):
                 try:
@@ -635,7 +634,7 @@ class GetMany:
                     break
                 else:
                     queries.append(item)
-            return queries
+        return queries
 
     def get(self, block: bool, timeout: float):
         raise NotImplementedError
