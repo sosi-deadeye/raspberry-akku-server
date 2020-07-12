@@ -207,12 +207,17 @@
             document.getElementById('voltage').innerText = "#";
             document.getElementById('current').innerText = "#";
             document.getElementById('power').innerText = "#";
-            document.getElementById('cell1').innerText = "#";
-            document.getElementById('cell2').innerText = "#";
-            document.getElementById('cell3').innerText = "#";
-            document.getElementById('cell4').innerText = "#";
             document.getElementById('temperature').innerText = "#";
             document.getElementById('error').innerText = "";
+            if (lower_voltage) {
+                document.getElementById('cell_low').innerText = "#";
+                document.getElementById('cell_high').innerText = "#";
+            } else {
+                document.getElementById('cell1').innerText = "#";
+                document.getElementById('cell2').innerText = "#";
+                document.getElementById('cell3').innerText = "#";
+                document.getElementById('cell4').innerText = "#";
+            }
         })
     }
 </script>
