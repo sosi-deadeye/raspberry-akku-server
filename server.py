@@ -382,7 +382,6 @@ class DataReader(Thread):
         self.stats_charge: deque = deque(maxlen=4)
         self.timedelta_queue: Optional[Queue] = None
         self.notified: bool = False
-        self.last_answer = 0
         super().__init__()
 
     def handle_error(self, error_flags: int) -> None:
@@ -409,7 +408,7 @@ class DataReader(Thread):
             self.current_values["current"],
             self.current_values["charge"],
             self.current_values["temperature"],
-            self.last_answer,
+            time.time(),
             *self.current_values["cell_voltages"],
         )
         set_current_values(current_data)
