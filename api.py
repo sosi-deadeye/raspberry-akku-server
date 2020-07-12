@@ -39,7 +39,7 @@ templates = Jinja2Templates(directory="templates")
 
 app = FastAPI(
     title="LiFePo4-Akku",
-    version="3.0.0",
+    version="3.4.0",
     description="Rest API für des LiFePo4-Akkus",
     docs_url=None,
     redoc_url=None,
