@@ -78,18 +78,29 @@ def plot(session: Session, cycle: int, history: Union[float, int]) -> bytes:
     V.plot(x, voltages, "b-")
     V.set_title("Spannung in V")
     # V.set_xticks([])
-    V.set_ylim([0, 15])
+    V.set_ylim(
+        [
+            max(0, (min(voltages) - 1)),
+            max(voltages) + 1,
+        ]
+    )
 
     I = plt.subplot(312)
     I.set_title("Strom in A")
     I.plot(x, currents, "r-")
     # I.set_xticks([])
-    I.set_ylim([-250, 250])
+    I.set_ylim([
+        min(currents) - 10,
+        max(currents) + 10,
+    ])
 
     C = plt.subplot(313)
     C.set_title("Ladung in Ah")
     C.plot(x, charges, "g-")
-    C.set_ylim([0, capacity])
+    C.set_ylim([
+        max(0, min(charges)),
+        max(charges) + 10,
+    ])
     C.set_xlabel("Stunden")
 
     plt.tight_layout()
