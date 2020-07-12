@@ -128,7 +128,6 @@ async def get_current_values():
     except ZeroDivisionError:
         values["charge_rel"] = 0
     values["errors"] = errors.get_short(values["error"])
-    print(values["voltage"])
     if values["voltage"] > 16:
         values["lower_cell_voltage"] = min(values["cell_voltages"])
         values["upper_cell_voltage"] = max(values["cell_voltages"])

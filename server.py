@@ -498,7 +498,7 @@ class DataReader(Thread):
             except statistics.StatisticsError:
                 return
             relative_load = (median_charge / self.current_values["capacity"]) * 100
-            if self.current_values["current"] < 1.0:
+            if median_current < 2.0:
                 if not self.notified and off_limit < relative_load < warning_limit:
                     log.warning("Ladung unter 15%. E-Mail wird gesendet.")
                     notify_thread = Thread(
@@ -509,7 +509,7 @@ class DataReader(Thread):
                     )
                     notify_thread.start()
                     self.notified = True
-                elif relative_load < off_limit and median_current < 0:
+                elif relative_load < off_limit:
                     notify.send_report(
                         "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
                     )
