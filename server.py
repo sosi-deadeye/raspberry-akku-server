@@ -466,8 +466,8 @@ class DataReader(Thread):
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
 
-        #if time.monotonic() - self.start_time < 30 * 60:
-        #    return
+        if time.monotonic() - self.start_time < 30 * 60:
+            return
 
         inactivity = None
         try:
@@ -509,7 +509,7 @@ class DataReader(Thread):
             if median_current < 2.0:
 
                 # todo: Remove this check later
-                if inactivity > 5 * 60 and self.current_values["voltage"] > 16:
+                if inactivity > 24 * 60 and self.current_values["voltage"] > 16:
                     self.power_off()
 
                 if not self.notified and off_limit < relative_load < warning_limit:
