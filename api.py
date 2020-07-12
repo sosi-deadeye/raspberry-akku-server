@@ -119,6 +119,7 @@ def iwlist():
 @app.get("/api/aktuelle_werte", response_model=CurrentValues)
 async def get_current_values():
     control.send_multipart([b"CONTROL", b"LIVE"])
+    last_check()
     values = current_values.get_values()
     if (time.monotonic() - values["timestamp"]) > 10:
         return {key: "#" for key in values}
@@ -401,6 +402,11 @@ async def get_email(request: Request):
     )
 
 
+def last_check():
+    with open("/tmp/last_check", "wt") as fd:
+        fd.write(str(time.monotonic()))
+
+
 if __name__ in ("__main__", "api"):
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
@@ -411,4 +417,5 @@ if __name__ in ("__main__", "api"):
     executor = ThreadPoolExecutor(max_workers=2)
     node_server = nodes.NodeServer()
     node_server.start()
+    last_check()
     loop = asyncio.get_event_loop()

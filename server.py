@@ -466,8 +466,17 @@ class DataReader(Thread):
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
 
-        if time.monotonic() - self.start_time < 30 * 60:
-            return
+        #if time.monotonic() - self.start_time < 30 * 60:
+        #    return
+
+        inactivity = None
+        try:
+            with open("/tmp/last_check") as fd:
+                inactivity = time.monotonic() - float(fd.read())
+        except FileNotFoundError:
+            pass
+        except ValueError:
+            pass
 
         warning_limit = 15
         off_limit = 10
@@ -498,6 +507,11 @@ class DataReader(Thread):
                 return
             relative_load = (median_charge / self.current_values["capacity"]) * 100
             if median_current < 2.0:
+
+                # todo: Remove this check later
+                if inactivity > 5 * 60 and self.current_values["voltage"] > 16:
+                    self.power_off()
+
                 if not self.notified and off_limit < relative_load < warning_limit:
                     log.warning("Ladung unter 15%. E-Mail wird gesendet.")
                     notify_thread = Thread(
@@ -513,6 +527,10 @@ class DataReader(Thread):
                         "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
                     )
                     log.warning(f"Achtung Ladung: {relative_load:.1f} %")
+                    self.power_off()
+
+    @staticmethod
+    def power_off():
                     GPIO.setup(5, GPIO.OUT)
                     GPIO.output(5, True)
                     time.sleep(2)
