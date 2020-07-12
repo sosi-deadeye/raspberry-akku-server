@@ -531,15 +531,15 @@ class DataReader(Thread):
 
     @staticmethod
     def power_off():
-                    GPIO.setup(5, GPIO.OUT)
-                    GPIO.output(5, True)
-                    time.sleep(2)
-                    GPIO.output(5, False)
-                    time.sleep(1)
-                    GPIO.output(5, True)
-                    time.sleep(2)
-                    GPIO.output(5, False)
-                    call(["shutdown", "-h", "0"])
+        GPIO.setup(5, GPIO.OUT)
+        GPIO.output(5, True)
+        time.sleep(2)
+        GPIO.output(5, False)
+        time.sleep(1)
+        GPIO.output(5, True)
+        time.sleep(2)
+        GPIO.output(5, False)
+        call(["shutdown", "-h", "0"])
 
     def database_insert(self) -> None:
         """
