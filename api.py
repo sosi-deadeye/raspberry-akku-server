@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import json
 import time
 import re
@@ -7,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from subprocess import call
-from typing import List
+from typing import List, Optional
 
 import zmq
 from fastapi import FastAPI, Form
@@ -98,14 +97,16 @@ class Ap(BaseModel):
 
 
 @app.get("/api/statistics")
-async def async_statistics(cycle: int, history: float = None):
+async def async_statistics(
+    cycle: int, history: float = None, rounding: Optional[int] = None
+):
     """
     Statistiken eines Zyklus als csv Datei herunterladen.
     """
     headers = {"Content-Disposition": 'attachment; filename="stats.csv"'}
     return StreamingResponse(
         statistiken.get_stats(
-            session=session, cycle=cycle, history=history, rounding=1
+            session=session, cycle=cycle, history=history, rounding=rounding
         ),
         headers=headers,
         media_type="text/csv",
@@ -217,8 +218,8 @@ async def get_wlan(request: Request):
     psk = ""
     try:
         data = Path("/etc/wpa_supplicant/wpa_supplicant.conf").read_text()
-    except Exception:
-        pass
+    except Exception as e:
+        return repr(e)
 
     if data:
         ssid_match = re.search(r'ssid\s*=\s*"(.+)"', data)

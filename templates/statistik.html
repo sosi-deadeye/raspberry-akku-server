@@ -56,7 +56,7 @@
     var chart = c3.generate({
         bindto: '#chart',
         data: {
-            url: '/api/statistics?cycle=' + document.getElementById('cycle').value + '&history=' + document.getElementById('history').value,
+            url: '/api/statistics?cycle=' + document.getElementById('cycle').value + '&history=' + document.getElementById('history').value + '&rounding=1',
             x: 'timestamp',
             xFormat: '%Y-%m-%dT%H:%M:%S.%f',
             names: {
