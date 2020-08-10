@@ -98,13 +98,17 @@ class Ap(BaseModel):
 
 
 @app.get("/api/statistics")
-async def async_statistics(cycle: int):
+async def async_statistics(cycle: int, history: float = None):
     """
     Statistiken eines Zyklus als csv Datei herunterladen.
     """
     headers = {"Content-Disposition": 'attachment; filename="stats.csv"'}
     return StreamingResponse(
-        statistiken.get_stats(session, cycle), headers=headers, media_type="text/csv"
+        statistiken.get_stats(
+            session=session, cycle=cycle, history=history, rounding=1
+        ),
+        headers=headers,
+        media_type="text/csv",
     )
 
 
@@ -142,35 +146,16 @@ async def get_current_values():
 async def graph(request: Request):
     async with graph_busy:
         cycle = await loop.run_in_executor(executor, database.get_cycle, session)
-        # cycle = database.get_cycle(session)
-        img = await loop.run_in_executor(executor, statistiken.plot, session, cycle, 2)
-        # img = statistiken.plot(session, cycle, 2)
-        return templates.TemplateResponse(
-            "statistik.html",
-            {
-                "request": request,
-                "base64_svg": base64.b64encode(img).decode(),
-                "cycle": cycle,
-                "history": 2,
-            },
-        )
+    return templates.TemplateResponse(
+        "statistik.html", {"request": request, "cycle": cycle, "history": 2,},
+    )
 
 
 @app.post("/graph")
 async def graph(request: Request, cycle: int = Form(...), history: float = Form(...)):
-    async with graph_busy:
-        img = await loop.run_in_executor(
-            executor, statistiken.plot, session, cycle, history
-        )
-        return templates.TemplateResponse(
-            "statistik.html",
-            {
-                "request": request,
-                "base64_svg": base64.b64encode(img).decode(),
-                "cycle": cycle,
-                "history": history,
-            },
-        )
+    return templates.TemplateResponse(
+        "statistik.html", {"request": request, "cycle": cycle, "history": history,},
+    )
 
 
 @app.post("/api/shutdown")
