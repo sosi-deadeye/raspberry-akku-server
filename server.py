@@ -469,33 +469,15 @@ class DataReader(Thread):
         if time.monotonic() - self.start_time < 30 * 60:
             return
 
-        inactivity = None
+        inactivity = 0
         try:
             with open("/tmp/last_check") as fd:
                 inactivity = time.monotonic() - float(fd.read())
         except FileNotFoundError:
-            pass
+            if time.monotonic() > self.start_time + 3 * 24 * 60:
+                self.power_off()
         except ValueError:
             pass
-
-        warning_limit = 15
-        off_limit = 10
-        limits = {
-            (8, 16): {
-                    "warning": 15,
-                    "off": 10,
-                },
-            (16, 60):
-                {
-                    "warning": 15,
-                    "off": 95,
-                }
-        }
-
-        for (lower, upper), config in limits.items():
-            if lower < self.current_values["voltage"] < upper:
-                warning_limit = config["warning"]
-                off_limit = config["off"]
 
         if self.current_values["capacity"] is not None and not math.isclose(
             self.current_values["capacity"], 0
@@ -508,9 +490,11 @@ class DataReader(Thread):
             relative_load = (median_charge / self.current_values["capacity"]) * 100
             if median_current < 2.0:
 
-                # todo: Remove this check later
-                if inactivity > 24 * 60 and self.current_values["voltage"] > 16:
+                if inactivity > 3 * 24 * 60:
                     self.power_off()
+
+                warning_limit = 15
+                off_limit = 10
 
                 if not self.notified and off_limit < relative_load < warning_limit:
                     log.warning("Ladung unter 15%. E-Mail wird gesendet.")

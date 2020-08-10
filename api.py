@@ -403,5 +403,4 @@ if __name__ in ("__main__", "api"):
     executor = ThreadPoolExecutor(max_workers=2)
     node_server = nodes.NodeServer()
     node_server.start()
-    last_check()
     loop = asyncio.get_event_loop()
