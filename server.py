@@ -499,9 +499,6 @@ class DataReader(Thread):
             current_threshold = 2.0
             if median_current < current_threshold:
 
-                if inactivity > delay_inactivity:
-                    self.power_off()
-
                 warning_limit = 15
                 off_limit = 10
 
