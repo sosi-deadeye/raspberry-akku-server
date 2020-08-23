@@ -2,9 +2,14 @@ import time
 from datetime import timedelta
 from threading import Thread
 from queue import Queue
+from typing import Generator, Tuple
 
 
-def observer():
+OBSERVER_YIELD = Tuple[timedelta, float]
+OBSERVER_TYPE = Generator[OBSERVER_YIELD, None, None]
+
+
+def observer() -> OBSERVER_TYPE:
     last = time.time()
     while True:
         time.sleep(1)
@@ -17,12 +22,13 @@ def observer():
         last = now
 
 
-def daemon(queue):
-    for timedelta in observer():
-        queue.put(timedelta)
+def daemon(queue: Queue) -> None:
+    for td in observer():
+        queue.put(td)
 
-def start():
-    queue = Queue()
+
+def start() -> Queue:
+    queue: Queue = Queue()
     thread = Thread(target=daemon, args=[queue], daemon=True)
     thread.start()
     return queue

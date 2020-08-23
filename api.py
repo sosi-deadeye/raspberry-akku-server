@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 import re
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +19,7 @@ from fastapi.openapi.docs import (
 from gpiozero import Buzzer
 from pydantic import BaseModel, Field
 from starlette.requests import Request
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 
 import current_values
@@ -32,6 +33,8 @@ import wlanpw
 import wpa_passphrase
 import nodes
 
+
+TZ_FILE = Path("/etc/timezone")
 
 session = database.Session()
 templates = Jinja2Templates(directory="templates")
@@ -168,7 +171,7 @@ async def shutdown():
 
 
 @app.post("/api/reset-ap-pw")
-async def reset_password():
+async def reset_ap_password():
     wlanpw.reset()
     return {"success": True}
 
@@ -187,7 +190,7 @@ async def get_ap_pw(request: Request):
 
 
 @app.post("/api/set-ap-pw")
-async def reset_password(request: Request, password: str = Form(...)):
+async def set_ap_password(request: Request, password: str = Form(...)):
     try:
         wlanpw.set(password)
     except ValueError:
@@ -201,7 +204,7 @@ async def reset_password(request: Request, password: str = Form(...)):
 
 
 @app.get("/api/ispdb/{email}")
-async def get_isbdb_smtp(request: Request, email: str):
+async def get_ispdb_smtp(request: Request, email: str):
     task = await loop.run_in_executor(executor, ispdb.get_smtp, email)
     return task
 
@@ -314,6 +317,28 @@ async def post_email(
     )
 
 
+@app.get("/api/time")
+def get_time():
+    now = datetime.now().replace(microsecond=0)
+    local_time = now.time().isoformat()
+    local_date = now.date().isoformat()
+    local_timezone = TZ_FILE.read_text().strip()
+    return {"time": local_time, "date": local_date, "timezone": local_timezone}
+
+
+@app.post("/api/time")
+async def set_time(request: Request):
+    body = await request.json()
+    date_iso = body.get("date_iso")
+    time_iso = body.get("time_iso")
+    timezone = body.get("timezone")
+    if any(field is None for field in [date_iso, time_iso, timezone]):
+        return {"success": False}
+    # _set_time(date_iso, time_iso, timezone)
+    await loop.run_in_executor(executor, _set_time, date_iso, time_iso, timezone)
+    return {"time": time_iso, "date": date_iso, "timezone": timezone}
+
+
 @app.post("/api/on")
 def battery_on():
     """
@@ -352,7 +377,6 @@ def battery_ack():
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
-    print("Hi, docs override..")
     return get_swagger_ui_html(
         openapi_url=app.openapi_url,
         title=app.title + " - Swagger UI",
@@ -377,20 +401,34 @@ async def redoc_html():
 
 
 @app.get("/api/nodes")
-async def get_email(request: Request):
+async def api_get_nodes(request: Request):
     return node_server.nodes
 
 
 @app.get("/nodes")
-async def get_email(request: Request):
+async def get_nodes(request: Request):
     return templates.TemplateResponse(
         "nodes.html", {"request": request, "nodes": node_server.nodes,}
     )
 
 
+@contextmanager
+def read_write_mode():
+    call(["mount", "-o", "remount,rw", "/"])
+    yield
+    call(["mount", "-o", "remount,ro", "/"])
+
+
 def last_check():
     with open("/tmp/last_check", "wt") as fd:
         fd.write(str(time.monotonic()))
+
+
+def _set_time(date_iso: str, time_iso: str, timezone: str):
+    dt_str = f"{date_iso}T{time_iso}"
+    with read_write_mode():
+        call(["date", "+%Y-%m-%dT%H%M%SS", "-s", dt_str])
+        TZ_FILE.write_text(timezone + "\n")
 
 
 if __name__ in ("__main__", "api"):

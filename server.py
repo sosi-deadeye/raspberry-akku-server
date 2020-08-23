@@ -347,12 +347,14 @@ class DataReader(Thread):
     def __init__(
         self, answer_queue: ManyQueue, queries: QueryScheduler, cells: int = 4,
     ):
+        self.timedelta_queue: Queue
         self.answer_queue: ManyQueue = answer_queue
         self.cells: int = cells
         self.queries: QueryScheduler = queries
         self.session = Session()
         self.cycle: int = set_cycle(self.session)
-        self.last_error: Optional[int] = None
+        self.last_answer: float = 0.0
+        self.last_error: int = 0
         self.last_error_flags: Optional[int] = None
         self.error_topics: list = [
             0x0010,
@@ -364,13 +366,12 @@ class DataReader(Thread):
             0x4000,
             0x8000,
         ]
-        self.notified: bool = False
         self.row: int = 0
         self.current_values = {
             "voltage": 0.0,
             "current": 0.0,
             "charge": 0.0,
-            "capacity": 0.0,
+            "capacity": 0,
             "temperature": 0.0,
             "cell_voltages": [0.0] * self.cells,
             "error": 0,
@@ -380,7 +381,6 @@ class DataReader(Thread):
         self.start_time: float = time.monotonic()
         self.stats_current: deque = deque(maxlen=4)
         self.stats_charge: deque = deque(maxlen=4)
-        self.timedelta_queue: Optional[Queue] = None
         self.notified: bool = False
         super().__init__()
 
@@ -419,6 +419,8 @@ class DataReader(Thread):
 
         Anschließende Korrektur der Zeitstempel.
         """
+        diff: timedaemon.timedelta
+        positive: float
         if not self.timedelta_queue.empty():
             log.info(
                 f"Die Systemzeit hat sich geändert. Aktualisiere die Daten aus dem Zyklus {self.cycle}"
@@ -440,7 +442,7 @@ class DataReader(Thread):
         Diese Funktion wird indirekt durch die Methode start() aufgerufen.
         """
         log.debug("Datalogger: Starte Zeitüberwachung")
-        self.timedelta_queue: Queue = timedaemon.start()
+        self.timedelta_queue = timedaemon.start()
         log.info(f"Zyklus: {self.cycle}")
         log.info("Sende erste Abfragen")
         # send_many_queries([query_capacity(), query_load(), query_battery_on()])
@@ -465,16 +467,22 @@ class DataReader(Thread):
         Ladung unter 15% ist -> E-Mail versenden
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
+        minute = 60
+        hour = minute * 60
+        day = hour * 24
 
-        if time.monotonic() - self.start_time < 30 * 60:
+        delay_override = 30 * minute
+        delay_inactivity = 3 * day
+
+        if time.monotonic() - self.start_time < delay_override:
             return
 
-        inactivity = 0
+        inactivity: float = 0
         try:
             with open("/tmp/last_check") as fd:
                 inactivity = time.monotonic() - float(fd.read())
         except FileNotFoundError:
-            if time.monotonic() > self.start_time + 3 * 24 * 60:
+            if time.monotonic() > self.start_time + delay_inactivity:
                 self.power_off()
         except ValueError:
             pass
@@ -488,9 +496,10 @@ class DataReader(Thread):
             except statistics.StatisticsError:
                 return
             relative_load = (median_charge / self.current_values["capacity"]) * 100
-            if median_current < 2.0:
+            current_threshold = 2.0
+            if median_current < current_threshold:
 
-                if inactivity > 3 * 24 * 60:
+                if inactivity > delay_inactivity:
                     self.power_off()
 
                 warning_limit = 15
@@ -547,7 +556,7 @@ class DataReader(Thread):
             self.row += 1
             self.db_next_update = time.monotonic() + self.db_update_interval
 
-    def send_queries(self, queries: List[bytes, ...]) -> None:
+    def send_queries(self, queries: List[bytes]) -> None:
         # Prüfe Kapazität
         if math.isclose(self.current_values["capacity"], 0):
             log.info("Frage Kapazität ab.")
@@ -748,6 +757,7 @@ class SerialTxLock:
                 return False
             else:
                 return True
+        return True
 
     def txd_sense_wait(self) -> None:
         while True:
@@ -808,7 +818,12 @@ class SerialServer(Thread):
             if not rep.is_zero():
                 try:
                     values = rep.read_reply(buffer)
-                except (TypeError, ValueError, struct.error, serial.SerialException) as e:
+                except (
+                    TypeError,
+                    ValueError,
+                    struct.error,
+                    serial.SerialException,
+                ) as e:
                     log.debug(repr(e))
                 else:
                     self.receiver_queue.put((rep.frame_type, values))
