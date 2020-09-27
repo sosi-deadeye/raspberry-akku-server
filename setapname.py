@@ -114,4 +114,6 @@ if __name__ == "__main__":
     host_name = None
     if len(sys.argv) == 2:
         host_name = sys.argv[1]
+    if Path("/media/data/custom_hostname").exists():
+        host_name = get_hostname()
     set_all(host_name)

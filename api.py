@@ -213,7 +213,7 @@ async def set_hostname(request: Request, hostname: str = Form(...)):
     hostname = setapname.filter_name(hostname)
     setapname.set_all(hostname)
     global_hostname = hostname
-
+    Path("/media/data/custom_hostname").touch()
     return templates.TemplateResponse(
         "hostname_set.html",
         {"request": request, "hostname": hostname},
