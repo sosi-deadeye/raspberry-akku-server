@@ -32,11 +32,13 @@ import statistiken
 import wlanpw
 import wpa_passphrase
 import nodes
+import setapname
 
 
 TZ_FILE = Path("/etc/timezone")
 
 session = database.Session()
+global_hostname = setapname.get_hostname()
 templates = Jinja2Templates(directory="templates")
 
 app = FastAPI(
@@ -81,6 +83,7 @@ class CurrentValues(BaseModel):
     )
     lower_cell_voltage: float = Field(None, title="Untere Zellspannung")
     upper_cell_voltage: float = Field(None, title="Obere Zellspannung")
+    hostname: str = Field(None, title="Gerätename")
 
 
 class Error(BaseModel):
@@ -143,6 +146,7 @@ async def get_current_values():
     else:
         values["lower_cell_voltage"] = None
         values["upper_cell_voltage"] = None
+    values["hostname"] = global_hostname
     return values
 
 
@@ -200,6 +204,19 @@ async def set_ap_password(request: Request, password: str = Form(...)):
     return templates.TemplateResponse(
         "ap-password.html",
         {"request": request, "password": password, "success": success,},
+    )
+
+
+@app.post("/api/set-hostname")
+async def set_hostname(request: Request, hostname: str = Form(...)):
+    global global_hostname
+    hostname = setapname.filter_name(hostname)
+    setapname.set_all(hostname)
+    global_hostname = hostname
+
+    return templates.TemplateResponse(
+        "hostname_set.html",
+        {"request": request, "hostname": hostname},
     )
 
 
