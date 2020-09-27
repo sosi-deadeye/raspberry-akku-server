@@ -21,9 +21,20 @@
         Die zugewiesene IP-Adresse wird im Webinterface des Routers angezeigt.
         Dazu bitte die entsprechende Dokumentation des Router-Herstellers lesen.
         Bei der Fritz!Box werden die IP-Adressen der Endgeräte auf der ersten Seite aufgelistet.
-
+        <br/><br/>
+        {% if client_mode %}
+            <div class="text-info">
+                Das WLAN-Modul verbindet sich automatisch mit dem eingestellten WLAN-Hotspot.
+            </div>
+        {% else %}
+            <div class="text-info">
+                Das WLAN-Modul startet als AccessPoint.
+            </div>
+        {% endif %}
+        <br/><br/>
         <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
     </div>
+
 </div>
 <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
 <script src="/vendor/popper/popper.min.js"></script>

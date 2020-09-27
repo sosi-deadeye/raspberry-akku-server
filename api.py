@@ -215,8 +215,7 @@ async def set_hostname(request: Request, hostname: str = Form(...)):
     global_hostname = hostname
     Path("/media/data/custom_hostname").touch()
     return templates.TemplateResponse(
-        "hostname_set.html",
-        {"request": request, "hostname": hostname},
+        "hostname_set.html", {"request": request, "hostname": hostname},
     )
 
 
@@ -249,22 +248,44 @@ async def get_wlan(request: Request):
             ssid = ssid_match.group(1)
             psk = psk_match.group(1)
 
+    if Path("/media/data/wifi_mode").read_text().strip() == "wlan0":
+        client_mode = "checked"
+    else:
+        client_mode = ""
+
     return templates.TemplateResponse(
-        "wifi_internet.html", {"request": request, "ssid": ssid, "password": psk,}
+        "wifi_internet.html",
+        {"request": request, "ssid": ssid, "password": psk, "client_mode": client_mode},
     )
 
 
 @app.post("/api/internet")
-async def set_wlan(request: Request, ssid: str = Form(...), password: str = Form(...)):
+async def set_wlan(
+    request: Request,
+    ssid: str = Form(...),
+    password: str = Form(...),
+    client_mode: str = Form(""),
+):
     try:
         wpa_passphrase.set_network(ssid, password)
     except ValueError:
         success = "Passwort ist zu kurz."
     else:
         success = "SSID und Passwort sind erfolgreich gesetzt worden."
+        wifi_mode_config = Path("/media/data/wifi_mode")
+        if client_mode:
+            wifi_mode_config.write_text("wlan0\n")
+        else:
+            wifi_mode_config.write_text("ap0\n")
     return templates.TemplateResponse(
         "internet.html",
-        {"request": request, "ssid": ssid, "password": password, "success": success,},
+        {
+            "request": request,
+            "ssid": ssid,
+            "password": password,
+            "success": success,
+            "client_mode": client_mode,
+        },
     )
 
 

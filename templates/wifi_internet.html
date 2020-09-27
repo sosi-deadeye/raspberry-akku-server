@@ -23,6 +23,10 @@
             <input type="password" class="form-control" id="password" name="password" placeholder="Passwort"
                    required>
         </div>
+        <div class="form-group">
+            <label for="client_mode">Beim Start mit WLAN-Hotspot verbinden</label>
+            <input type="checkbox" id="client_mode" name="client_mode" {{ client_mode }}>
+        </div>
         <br/>
         <button type="submit" class="btn btn-primary">Speichern</button>
         <br/><br/>
