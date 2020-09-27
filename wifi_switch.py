@@ -20,7 +20,7 @@ MODES = (AP, CLIENT)
 WIFI_MODE = Path("/media/data/wifi_mode")
 
 
-def set_mode(mode):
+def set_mode(mode: str):
     """
     Write mode ap0 or wlan0 to file wifi_mode
     """
@@ -45,65 +45,54 @@ def get_mode():
     return mode
 
 
+def start_hotspot():
+    call(["ifdown", "wlan0"])
+    call(["systemctl", "start", "wlan-ap"])
+    call(["ifup", "ap0"])
+    call(["systemctl", "start", "hostapd"])
+    call(
+        ["ip", "route", "add", "default", "via", "192.168.0.1", "dev", "ap0",]
+    )
+
+
+def start_client():
+    call(
+        ["ip", "route", "del", "default", "via", "192.168.0.1", "dev", "ap0",]
+    )
+    call(["systemctl", "stop", "hostapd"])
+    call(["ifdown", "ap0"])
+    call(["systemctl", "start", "wlan-ap-del"])
+    call(["ifup", "wlan0"])
+
+
 class State:
-    def __init__(self):
-        self._state = None
+    def __init__(self, initial: str):
+        self._state = initial
 
     @property
-    def state(self):
+    def state(self) -> str:
         return self._state
 
     @state.setter
-    def state(self, value):
+    def state(self, value) -> None:
         value = value.strip()
-        if value not in ("ap0", "wlan0"):
+        if value not in MODES:
             raise ValueError('Only "ap0" or "wlan0" is allowed')
         if value != self._state:
-            if value == "ap0":
+            if value == AP:
                 led.off()
-                print("Starting hotspot")
-                call(["ifdown", "wlan0"])
-                call(["systemctl", "start", "wlan-ap"])
-                call(["ifup", "ap0"])
-                call(["systemctl", "start", "hostapd"])
-                call(
-                    [
-                        "ip",
-                        "route",
-                        "add",
-                        "default",
-                        "via",
-                        "192.168.0.1",
-                        "dev",
-                        "ap0",
-                    ]
-                )
+                start_hotspot()
                 self._state = value
                 buzzer.beep(1, 1, n=2)
-            elif value == "wlan0":
+            elif value == CLIENT:
                 print("Connecting to hotspot")
                 led.blink(0.1, 0.1)
-                call(
-                    [
-                        "ip",
-                        "route",
-                        "del",
-                        "default",
-                        "via",
-                        "192.168.0.1",
-                        "dev",
-                        "ap0",
-                    ]
-                )
-                call(["systemctl", "stop", "hostapd"])
-                call(["ifdown", "ap0"])
-                call(["systemctl", "start", "wlan-ap-del"])
-                call(["ifup", "wlan0"])
+                start_client()
                 self._state = value
                 buzzer.beep(0.5, 0.5, n=2)
                 led.blink(0.1, 2)
                 try:
-                    ips = ifaddresses("wlan0").get(AF_INET, [])
+                    ips = ifaddresses(CLIENT).get(AF_INET, [])
                     hosts = Path("/media/data/hosts.custom")
                     hostname = check_output(["hostname"], encoding="utf8")
                     with hosts.open("w") as fd:
@@ -113,14 +102,14 @@ class State:
                     print(repr(e))
 
     def switch(self):
-        self.state = "wlan0" if self.state == "ap0" else "ap0"
+        self.state = CLIENT if self.state == AP else AP
 
 
 class SuperButton:
-    def __init__(self):
+    def __init__(self, wifi_mode):
         self.button = Button(13, pull_up=True, bounce_time=0.1, hold_time=0.3)
         self.button.when_held = self.callback
-        self.state = State()
+        self.state = State(wifi_mode)
         self.count = 0
         self.timeout = None
 
@@ -148,10 +137,11 @@ class SuperButton:
 if __name__ == "__main__":
     buzzer = Buzzer(5)
     led = LED(6)
-    switch = SuperButton()
-    # initial state is always ap0
-    if get_mode() != AP:
-        switch.state.switch()
-        # not so proud of it
+    initial_mode = get_mode()
+    if initial_mode == AP:
+        start_hotspot()
+    elif initial_mode == CLIENT:
+        start_client()
+    switch = SuperButton(initial_mode)
     while True:
         time.sleep(10)
