@@ -140,8 +140,11 @@ if __name__ == "__main__":
     initial_mode = get_mode()
     if initial_mode == AP:
         start_hotspot()
+        buzzer.beep(1, 1, n=2)
     elif initial_mode == CLIENT:
         start_client()
+        buzzer.beep(0.5, 0.5, n=2)
+        led.blink(0.1, 2)
     switch = SuperButton(initial_mode)
     while True:
         time.sleep(10)
