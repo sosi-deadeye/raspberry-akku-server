@@ -118,16 +118,16 @@ class NodeServer:
         self.sa = ServiceAnnouncer()
         self.nl = NodeListener(nodes=self._nodes)
 
-    def start(self):
+    def start(self) -> None:
         self.sa.start()
         self.nl.start()
 
     @property
-    def nodes(self):
+    def nodes(self) -> dict:
         return self._nodes.nodes.copy()
 
     @property
-    def nodes_sorted(self):
+    def nodes_sorted(self) -> dict:
         return dict(
             sorted(self.nodes.items(), key=lambda x: x[1]["hostname"])
         )

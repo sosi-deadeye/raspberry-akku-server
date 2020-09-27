@@ -4,6 +4,8 @@ import time
 import re
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
+from urllib.request import Request, urlopen
+from urllib.parse import urlencode
 from datetime import datetime
 from pathlib import Path
 from subprocess import call
@@ -167,8 +169,20 @@ async def graph(request: Request, cycle: int = Form(...), history: float = Form(
 
 
 @app.post("/api/shutdown")
-async def shutdown():
+async def shutdown(slave: bool = False):
     print("Poweroff")
+    if not slave and node_server.nodes:
+        futures = []
+        data = {"slave": True}
+        json_data = json.dumps(data).encode()
+        for addr in node_server.nodes:
+            req = Request(f"http://{addr}/api/shutdown", method="POST")
+            req.add_header('Content-Type', 'application/json; charset=utf-8')
+            req.add_header('Content-Length', str(len(json_data)))
+            urlopen(req, json_data)
+            fut = loop.run_in_executor(None, urlopen, req, json_data)
+            futures.append(fut)
+        await asyncio.gather(*futures)
     Buzzer(5).beep(2, 1, 5)
     call(["shutdown", "-h", "0"])
     return {"success": True}
