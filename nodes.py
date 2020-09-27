@@ -58,8 +58,8 @@ class NodeListener(Thread):
             print("Malformed data")
             return
 
-        if client_data.get("hostname") == self.hostname:
-            return
+        # if client_data.get("hostname") == self.hostname:
+        #    return
 
         client_data["last_seen"] = time.monotonic()
         self.clients.add(client_addr[0], client_data)
@@ -125,6 +125,12 @@ class NodeServer:
     @property
     def nodes(self):
         return self._nodes.nodes.copy()
+
+    @property
+    def nodes_sorted(self):
+        return dict(
+            sorted(self.nodes.items(), key=lambda x: x[1]["hostname"])
+        )
 
 
 if __name__ == "__main__":

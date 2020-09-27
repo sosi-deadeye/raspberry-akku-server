@@ -12,26 +12,46 @@
     {% if nodes %}
         <div class="card-deck">
             {%- for addr, data in nodes.items() %}
-                {%- for idx in range(1,4) %}
-                    <div class="card mb-4">
-                        <!-- <img class="card-img-top" src="..." alt="Card image cap"> -->
-                        <div class="card-body">
-<!--                        <h5 class="card-title">{{ data['hostname'] }} - {{ addr }}</h5> -->
-<!--                        <p class="card-text">{{ addr }}</p> -->
-                            <p class="card-link btn btn-success" type="button" onclick="location.href='{{ 'http://' + addr }}'">
-                                [{{ idx }}] {{ data['hostname'] }} - {{ addr }}
-                            </p>
+                <div class="card mb-4">
+                    <!-- <img class="card-img-top" src="..." alt="Card image cap"> -->
+                    <div class="card-body">
+                        <!--                        <h5 class="card-title">{{ data['hostname'] }} - {{ addr }}</h5> -->
+                        <!--                        <p class="card-text">{{ addr }}</p> -->
+
                         <!-- </div> -->
                         <table class="table">
-                        <tr><td>{{ data['payload']['capacity'] }}</td><td>Ah</td></tr>
-                        <tr><td>{{ data['payload']['charge'] | round(1) }}</td><td>Ah</td></tr>
-                        <tr><td>{{ data['payload']['voltage'] | round(1)  }}</td><td>V</td></tr>
-                        <tr><td>{{ data['payload']['current'] | round(1) }}</td><td>A</td></tr>
-                        <tr><td>{{ data['payload']['temperature'] | round(1) }}</td><td>°C</td></tr>
-                        </table></div>
+                            <tr>
+                                <td colspan="2">
+                                    <p class="card-link btn btn-success" type="button"
+                                       onclick="location.href='{{ 'http://' + addr }}'">
+                                        [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>{{ data['payload']['capacity'] }}</td>
+                                <td>Ah</td>
+                            </tr>
+                            <tr>
+                                <td>{{ data['payload']['charge'] | round(1) }}</td>
+                                <td>Ah</td>
+                            </tr>
+                            <tr>
+                                <td>{{ data['payload']['voltage'] | round(1) }}</td>
+                                <td>V</td>
+                            </tr>
+                            <tr>
+                                <td>{{ data['payload']['current'] | round(1) }}</td>
+                                <td>A</td>
+                            </tr>
+                            <tr>
+                                <td>{{ data['payload']['temperature'] | round(1) }}</td>
+                                <td>°C</td>
+                            </tr>
+                        </table>
                     </div>
-                    <div class="w-100 d-md-flex"><!-- wrap every 2 on sm--></div>
-                {% endfor -%}
+                </div>
+                <div class="w-100 d-md-flex"><!-- wrap every 2 on sm--></div>
             {% endfor -%}
         </div>
     {% else %}

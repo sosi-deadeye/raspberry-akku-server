@@ -425,7 +425,7 @@ async def api_get_nodes(request: Request):
 @app.get("/nodes")
 async def get_nodes(request: Request):
     return templates.TemplateResponse(
-        "nodes.html", {"request": request, "nodes": node_server.nodes,}
+        "nodes.html", {"request": request, "nodes": node_server.nodes_sorted,}
     )
 
 
