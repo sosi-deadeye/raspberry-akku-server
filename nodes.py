@@ -58,8 +58,9 @@ class NodeListener(Thread):
             print("Malformed data")
             return
 
-        # if client_data.get("hostname") == self.hostname:
-        #    return
+        # todo: Replacement of /tmp/current_values.bin?
+        if client_data.get("hostname") == self.hostname:
+            return
 
         client_data["last_seen"] = time.monotonic()
         self.clients.add(client_addr[0], client_data)

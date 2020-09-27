@@ -3,6 +3,7 @@ python-multipart
 netifaces
 emails
 fastapi
+requests
 gpiozero
 jinja2
 netifaces
