@@ -14,11 +14,40 @@ from gpiozero import (
     LED,
 )
 
+AP = "ap0"
+CLIENT = "wlan0"
+MODES = (AP, CLIENT)
+WIFI_MODE = Path("/media/data/wifi_mode")
+
+
+def set_mode(mode):
+    """
+    Write mode ap0 or wlan0 to file wifi_mode
+    """
+    if mode in MODES:
+        WIFI_MODE.write_text(f"{mode}\n")
+
+
+def get_mode():
+    """
+    Get the current mode from file wifi_mode and return it.
+    If the file does not exist, AP mode is written to the file
+    and returned.
+    """
+    mode = "ap0"
+    if not WIFI_MODE.exists():
+        set_mode(AP)
+    else:
+        mode = WIFI_MODE.read_text().strip()
+        if mode not in MODES:
+            set_mode(AP)
+            mode = AP
+    return mode
+
 
 class State:
     def __init__(self):
         self._state = None
-        self.state = "ap0"
 
     @property
     def state(self):
@@ -120,5 +149,9 @@ if __name__ == "__main__":
     buzzer = Buzzer(5)
     led = LED(6)
     switch = SuperButton()
+    # initial state is always ap0
+    if get_mode() != AP:
+        switch.state.switch()
+        # not so proud of it
     while True:
         time.sleep(10)
