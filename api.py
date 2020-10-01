@@ -175,7 +175,7 @@ async def shutdown(slave: bool = False):
         for addr, payload in node_server.nodes_sorted.items():
             if payload["self"]:
                 continue
-            fut = loop.run_in_executor(None, requests.post, url.format(addr), None, True)
+            fut = loop.run_in_executor(None, lambda: requests.post(url.format(addr), json={"slave": True}, timeout=1))
             futures.append(fut)
         results = await asyncio.gather(*futures, return_exceptions=True)
         print(results)
