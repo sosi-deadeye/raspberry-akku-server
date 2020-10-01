@@ -167,18 +167,25 @@ async def graph(request: Request, cycle: int = Form(...), history: float = Form(
     )
 
 
+def shutdown_slave(address: str, slave: bool):
+    url = f"http://{address}/api/shutdown"
+
+    def inner():
+        requests.post(url, params={"slave": slave}, timeout=5)
+
+    return inner
+
+
 @app.post("/api/shutdown")
 async def shutdown(slave: bool = False):
     if not slave:
         futures = []
-        url = "http://{}/api/shutdown"
         for addr, payload in node_server.nodes_sorted.items():
             if payload["self"]:
                 continue
-            fut = loop.run_in_executor(None, lambda: requests.post(url.format(addr), json={"slave": True}, timeout=1))
+            fut = loop.run_in_executor(None, shutdown_slave(addr, slave=True))
             futures.append(fut)
-        results = await asyncio.gather(*futures, return_exceptions=True)
-        print(results)
+        await asyncio.gather(*futures, return_exceptions=True)
     # Buzzer(5).beep(2, 1, 5)
     # loop.call_later(2, call, ["shutdown", "-h", "0"])
     return {"success": True}
