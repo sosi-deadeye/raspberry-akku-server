@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<html lang="de">
+<head>
+    <title>Akku - {{ hostname }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center text-success">Einstellungen</h1>
+    <h2 class="text-center text-success">Gerätename</h2>
+    <form type="submit" action="/api/hostname" method="post" class="p-3 mb-2 bg-dark text-white">
+        <div class="form-group">
+            <label for="hostname">Gerätename</label>
+            <input type="text" class="form-control" id="hostname" name="hostname" value="{{ hostname }}"
+                   placeholder="Gewünschter Name [a-zA-Z0-9]" required>
+            <br/>
+            <div class="text-white">
+                Der Gerätename legt auch den Namen des WLAN-Netzwerks fest, sofern AccessPoint-Modus aktiv ist.
+            </div>
+            <br/>
+            <div class="text-white">
+                Auf der Hauptseite werden die Gerätenamen nach Lexikographischer Reihenfolge sortiert.
+            </div>
+        </div>
+
+        <div class="align-content-center">
+            <button type="submit" class="btn btn-primary btn-block">Gerätename setzen</button>
+            <br/>
+            <a href="/api/reset-hostname">
+                <button type="button" class="btn btn-secondary btn-block">Gerätename zurücksetzen</button>
+            </a>
+            <br/>
+            <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
+        </div>
+
+    </form>
+
+</div>
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="/vendor/sweetalert/sweetalert.min.js"></script>
+</body>
+</html>

@@ -9,11 +9,11 @@ from contextlib import contextmanager
 from python_hosts import Hosts, HostsEntry
 
 
-ALPHA = string.ascii_lowercase + string.ascii_uppercase + string.digits + "_"
+ALPHA = string.ascii_lowercase + string.ascii_uppercase + string.digits + "-"
 
 
-def filter_name(name):
-    return "".join(c for c in name if c in ALPHA)
+def filter_name(name: str) -> str:
+    return "".join(c for c in name.replace("_", "-") if c in ALPHA)
 
 
 @contextmanager
@@ -23,7 +23,7 @@ def read_write():
     call(["mount", "-o", "remount,ro", "remount", "/"])
 
 
-def get_serial():
+def get_serial() -> str:
     cpuinfo = Path("/proc/cpuinfo").read_text()
     # Serial          : 00000000413c11de
     for line in cpuinfo.splitlines():
@@ -38,10 +38,7 @@ def set_ap(host_name=None):
     name = f"ssid=Akku{get_serial()}" if host_name is None else f"ssid={host_name}"
     try:
         new_config = re.sub(
-            r"^ssid=(.*)",
-            name,
-            hostapd_conf.read_text(),
-            flags=re.MULTILINE,
+            r"^ssid=(.*)", name, hostapd_conf.read_text(), flags=re.MULTILINE,
         )
     except Exception as e:
         print(repr(e))
@@ -50,12 +47,12 @@ def set_ap(host_name=None):
             hostapd_conf.write_text(new_config)
 
 
-def get_hostname():
+def get_hostname() -> str:
     with open("/etc/hostname") as fd:
         return fd.read().strip()
 
 
-def create_hostname():
+def create_hostname() -> str:
     serial = get_serial()
     return f"Akku{serial}"
 
@@ -91,8 +88,7 @@ def set_hosts():
     current_hosts = [
         host
         for host in hosts_file.entries
-        if host.entry_type == "ipv4"
-        and "localhost" not in host.names
+        if host.entry_type == "ipv4" and "localhost" not in host.names
     ]
     for current_host in current_hosts:
         for name in current_host.names:
@@ -103,9 +99,14 @@ def set_hosts():
         hosts_file.write()
 
 
+def set_hostname_kernel(name):
+    call(["hostname", name])
+
+
 def set_all(name):
     set_ap(name)
     set_hostname(name)
+    set_hostname_kernel(name)
     set_hostname_dhclient()
     set_hosts()
 

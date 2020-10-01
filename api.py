@@ -168,18 +168,18 @@ async def graph(request: Request, cycle: int = Form(...), history: float = Form(
 
 
 @app.post("/api/shutdown")
-async def shutdown(slave: bool = False):
-    print("Poweroff")
-    if not slave and node_server.nodes:
-        futures = []
-        url = "http://{}/api/shutdown"
-        data = {"slave": True}
-        for addr in node_server.nodes_sorted:
-            fut = loop.run_in_executor(None, requests.post, url.format(addr), None, data)
-            futures.append(fut)
-        await asyncio.gather(*futures, return_exceptions=True)
+async def shutdown():
+    futures = []
+    url = "http://{}/api/shutdown"
+    for addr, payload in node_server.nodes_sorted.items():
+        if payload["self"]:
+            continue
+        fut = loop.run_in_executor(None, requests.post, url.format(addr))
+        futures.append(fut)
+    results = await asyncio.gather(*futures, return_exceptions=True)
     # Buzzer(5).beep(2, 1, 5)
     # loop.call_later(2, call, ["shutdown", "-h", "0"])
+    print(results)
     return {"success": True}
 
 
@@ -216,7 +216,30 @@ async def set_ap_password(request: Request, password: str = Form(...)):
     )
 
 
-@app.post("/api/set-hostname")
+@app.get("/api/reset-hostname")
+async def reset_hostname(request: Request):
+    global global_hostname
+    # Path("/media/data/custom_hostname").unlink(missing_ok=True)
+    try:
+        Path("/media/data/custom_hostname")
+    except FileNotFoundError:
+        pass
+    hostname = setapname.create_hostname()
+    setapname.set_all(hostname)
+    global_hostname = hostname
+    return templates.TemplateResponse(
+        "hostname_set.html", {"request": request, "hostname": global_hostname},
+    )
+
+
+@app.get("/api/hostname")
+async def get_hostname(request: Request):
+    return templates.TemplateResponse(
+        "hostname_get.html", {"request": request, "hostname": global_hostname},
+    )
+
+
+@app.post("/api/hostname")
 async def set_hostname(request: Request, hostname: str = Form(...)):
     global global_hostname
     hostname = setapname.filter_name(hostname)
@@ -224,7 +247,7 @@ async def set_hostname(request: Request, hostname: str = Form(...)):
     global_hostname = hostname
     Path("/media/data/custom_hostname").touch()
     return templates.TemplateResponse(
-        "hostname_set.html", {"request": request, "hostname": hostname},
+        "hostname_set.html", {"request": request, "hostname": global_hostname},
     )
 
 

@@ -60,7 +60,9 @@ class NodeListener(Thread):
 
         # todo: Replacement of /tmp/current_values.bin?
         if client_data.get("hostname") == self.hostname:
-            return
+            client_data["self"] = True
+        else:
+            client_data["self"] = False
 
         client_data["last_seen"] = time.monotonic()
         self.clients.add(client_addr[0], client_data)
@@ -129,9 +131,7 @@ class NodeServer:
 
     @property
     def nodes_sorted(self) -> dict:
-        return dict(
-            sorted(self.nodes.items(), key=lambda x: x[1]["hostname"])
-        )
+        return dict(sorted(self.nodes.items(), key=lambda x: x[1]["hostname"]))
 
 
 if __name__ == "__main__":
