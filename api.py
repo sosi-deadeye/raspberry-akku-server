@@ -187,7 +187,7 @@ async def shutdown(slave: bool = False):
             futures.append(fut)
         await asyncio.gather(*futures, return_exceptions=True)
     # Buzzer(5).beep(2, 1, 5)
-    # loop.call_later(2, call, ["shutdown", "-h", "0"])
+    loop.call_later(3, call, ["shutdown", "-h", "0"])
     return {"success": True}
 
 
