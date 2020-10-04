@@ -193,13 +193,13 @@ async def shutdown(slave: bool = False):
 
 
 @app.get("/api/update")
-async def git_update(request: Request):
+def git_update(request: Request):
     info = update.get_last_commit()
     return templates.TemplateResponse("update.html", {"request": request, "info": info})
 
 
 @app.post("/api/update")
-async def git_update(request: Request):
+def git_update(request: Request):
     update.pull()
     info = update.get_last_commit()
     update.restart()
