@@ -34,6 +34,7 @@ import wlanpw
 import wpa_passphrase
 import nodes
 import setapname
+import update
 
 
 TZ_FILE = Path("/etc/timezone")
@@ -189,6 +190,20 @@ async def shutdown(slave: bool = False):
     # Buzzer(5).beep(2, 1, 5)
     loop.call_later(3, call, ["shutdown", "-h", "0"])
     return {"success": True}
+
+
+@app.get("/api/update")
+async def git_update(request: Request):
+    info = update.get_last_commit()
+    return templates.TemplateResponse("update.html", {"request": request, "info": info})
+
+
+@app.post("/api/update")
+async def git_update(request: Request):
+    update.pull()
+    info = update.get_last_commit()
+    update.restart()
+    return templates.TemplateResponse("update.html", {"request": request, "info": info})
 
 
 @app.post("/api/reset-ap-pw")
