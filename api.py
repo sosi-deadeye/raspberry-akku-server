@@ -200,10 +200,17 @@ def git_update(request: Request):
 
 @app.post("/api/update")
 def git_update(request: Request):
-    update.pull()
+    with read_write_mode():
+        update.pull()
+        import compileall
+        compileall.compile_dir("/home/server/akku")
     info = update.get_last_commit()
-    update.restart()
     return templates.TemplateResponse("update.html", {"request": request, "info": info})
+
+
+@app.get("/api/restart-services")
+def restart_services():
+    update.restart()
 
 
 @app.post("/api/reset-ap-pw")
