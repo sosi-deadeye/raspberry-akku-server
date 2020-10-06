@@ -38,6 +38,7 @@ import update
 
 
 TZ_FILE = Path("/etc/timezone")
+DEVELOPER_MODE = False
 
 session = database.Session()
 global_hostname = setapname.get_hostname()
@@ -45,7 +46,7 @@ templates = Jinja2Templates(directory="templates")
 
 app = FastAPI(
     title="LiFePo4-Akku",
-    version="3.4.0",
+    version="3.5.0beta1",
     description="Rest API für des LiFePo4-Akkus",
     docs_url=None,
     redoc_url=None,
@@ -104,6 +105,21 @@ class Ap(BaseModel):
     password: str
 
 
+@app.get("/api/developer")
+async def developer_access():
+    """
+    Override read-only mode for Updates
+    when developing.
+
+    This function will be removed before release
+    """
+    global DEVELOPER_MODE
+    if not DEVELOPER_MODE:
+        DEVELOPER_MODE = True
+        call(["mount", "-o", "remount,rw", "/"])
+    return RedirectResponse("/")
+
+
 @app.get("/api/statistics")
 async def async_statistics(
     cycle: int, history: float = None, rounding: Optional[int] = None
@@ -129,10 +145,19 @@ def iwlist():
     return {"aps": scan_wlan.get_cells()}
 
 
-@app.get("/api/aktuelle_werte", response_model=CurrentValues)
-async def get_current_values():
+async def nodes_live():
     control.send_multipart([b"CONTROL", b"LIVE"])
     last_check()
+    for ip, node in node_server.nodes.items():
+        if node["self"]:
+            continue
+        node_live_url = f"http://{ip}/api/live"
+        loop.run_in_executor(None, requests.get, node_live_url)
+
+
+@app.get("/api/aktuelle_werte", response_model=CurrentValues)
+async def get_current_values():
+    await nodes_live()
     values = current_values.get_values()
     if (time.monotonic() - values["timestamp"]) > 10:
         return {key: "#" for key in values}
@@ -203,6 +228,7 @@ def git_update(request: Request):
     with read_write_mode():
         update.pull()
         import compileall
+
         compileall.compile_dir("/home/server/akku")
     info = update.get_last_commit()
     return templates.TemplateResponse("update.html", {"request": request, "info": info})
@@ -502,11 +528,13 @@ async def redoc_html():
 
 @app.get("/api/nodes")
 async def api_get_nodes(request: Request):
+    await nodes_live()
     return node_server.nodes
 
 
 @app.get("/nodes")
 async def get_nodes(request: Request):
+    await nodes_live()
     return templates.TemplateResponse(
         "nodes.html", {"request": request, "nodes": node_server.nodes_sorted,}
     )
@@ -514,6 +542,9 @@ async def get_nodes(request: Request):
 
 @contextmanager
 def read_write_mode():
+    if DEVELOPER_MODE:
+        yield
+        return
     call(["mount", "-o", "remount,rw", "/"])
     yield
     call(["mount", "-o", "remount,ro", "/"])
