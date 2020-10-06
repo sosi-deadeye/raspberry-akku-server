@@ -237,6 +237,7 @@ def git_update(request: Request):
 @app.get("/api/restart-services")
 def restart_services():
     update.restart()
+    return RedirectResponse("/")
 
 
 @app.post("/api/reset-ap-pw")
