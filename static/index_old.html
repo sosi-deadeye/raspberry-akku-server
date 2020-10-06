@@ -68,32 +68,32 @@
                 </td>
                 <td>V</td>
             </tr>
-            <tr id="tr_cell_0">
-                <td>Zelle 1</td>
-                <td>
-                    <div class="row justify-content-end" id="cell0">#</div>
-                </td>
-                <td>V</td>
-            </tr>
-
             <tr id="tr_cell_1">
-                <td>Zelle 2</td>
+                <td>Zelle 1</td>
                 <td>
                     <div class="row justify-content-end" id="cell1">#</div>
                 </td>
                 <td>V</td>
             </tr>
+
             <tr id="tr_cell_2">
-                <td>Zelle 3</td>
+                <td>Zelle 2</td>
                 <td>
                     <div class="row justify-content-end" id="cell2">#</div>
                 </td>
                 <td>V</td>
             </tr>
             <tr id="tr_cell_3">
-                <td>Zelle 4</td>
+                <td>Zelle 3</td>
                 <td>
                     <div class="row justify-content-end" id="cell3">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr id="tr_cell_4">
+                <td>Zelle 4</td>
+                <td>
+                    <div class="row justify-content-end" id="cell4">#</div>
                 </td>
                 <td>V</td>
             </tr>
@@ -157,47 +157,50 @@
     let first_run = true;
 
     function update() {
-        fetch('/api/nodes').then(function (response) {
+        fetch('/api/aktuelle_werte').then(function (response) {
             return response.json();
-        }).then(function (nodes) {
-            let payload;
-            let voltage = 0.0;
-            let total_current = 0.0;
-            let ip = "192.168.0.1";
-            let total_capacity = 0;
-            let total_charge = 0;
-            let cell_voltages;
-            let cell_id = "";
-            for (ip in nodes) {
-                // console.log(ip);
-                payload = nodes[ip]["payload"];
-                total_current += payload["current"];
-                total_capacity += payload["capacity"];
-                total_charge += payload["charge"];
-                if (nodes[ip]["self"]) {
-                    voltage = payload["voltage"];
-                    cell_voltages = payload["cell_voltages"];
-
-                    document.getElementById('hostname').innerText = nodes[ip]["hostname"];
-                    document.getElementById('voltage').innerText = voltage.toFixed(2);
-                    document.getElementById('temperature').innerText = payload["temperature"].toFixed(1);
-                    document.getElementById('error').innerText = payload["error"];
-
-                    for (const cell_idx in cell_voltages) {
-                        cell_id = "cell" + cell_idx;
-                        //console.log(cell_id);
-                        document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2);
-                    }
-
-                    document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2);
-                    document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2);
-                }
-                document.getElementById('capacity').innerText = total_capacity.toFixed(0);
-                document.getElementById('charge').innerText = total_charge.toFixed(0);
-                document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1);
-                document.getElementById('current').innerText = total_current.toFixed(1);
-                document.getElementById('power').innerText = (voltage * total_current).toFixed(0);
+        }).then(function (myJson) {
+            document.getElementById('hostname').innerText = myJson["hostname"];
+            document.getElementById('capacity').innerText = myJson["capacity"].toFixed(0);
+            document.getElementById('charge').innerText = myJson["charge"].toFixed(0);
+            document.getElementById('charge_rel').innerText = myJson["charge_rel"].toFixed(0);
+            document.getElementById('voltage').innerText = myJson["voltage"].toFixed(2);
+            var current = myJson["current"].toFixed(2);
+            if (current > -0.9 && current < 0.9) {
+                current = 0.0
             }
+            document.getElementById('current').innerText = current;
+            if (current === 0) {
+                document.getElementById('power').innerText = "0";
+            } else {
+                document.getElementById('power').innerText = myJson["power"].toFixed(2);
+            }
+            lower_voltage = myJson["lower_cell_voltage"];
+            upper_voltage = myJson["upper_cell_voltage"];
+
+            if (first_run & lower_voltage) {
+                document.getElementById('tr_cell_1').remove();
+                document.getElementById('tr_cell_2').remove();
+                document.getElementById('tr_cell_3').remove();
+                document.getElementById('tr_cell_4').remove();
+                first_run = false;
+            }
+            else if (first_run) {
+                document.getElementById('tr_cell_lower').remove();
+                document.getElementById('tr_cell_upper').remove();
+                first_run = false;
+            }
+            if (! lower_voltage) {
+                document.getElementById('cell1').innerText = myJson["cell_voltages"][0].toFixed(2);
+                document.getElementById('cell2').innerText = myJson["cell_voltages"][1].toFixed(2);
+                document.getElementById('cell3').innerText = myJson["cell_voltages"][2].toFixed(2);
+                document.getElementById('cell4').innerText = myJson["cell_voltages"][3].toFixed(2);
+            } else {
+                document.getElementById('cell_low').innerText = lower_voltage.toFixed(2);
+                document.getElementById('cell_high').innerText = upper_voltage.toFixed(2);
+            }
+            document.getElementById('temperature').innerText = myJson["temperature"].toFixed(1);
+            document.getElementById('error').innerText = myJson["errors"];
         }).catch(error => {
             document.getElementById('capacity').innerText = "#";
             document.getElementById('charge').innerText = "#";
@@ -207,6 +210,15 @@
             document.getElementById('power').innerText = "#";
             document.getElementById('temperature').innerText = "#";
             document.getElementById('error').innerText = "";
+            if (lower_voltage) {
+                document.getElementById('cell_low').innerText = "#";
+                document.getElementById('cell_high').innerText = "#";
+            } else {
+                document.getElementById('cell1').innerText = "#";
+                document.getElementById('cell2').innerText = "#";
+                document.getElementById('cell3').innerText = "#";
+                document.getElementById('cell4').innerText = "#";
+            }
         })
     }
 </script>
@@ -245,7 +257,6 @@
                 });
             }, timeout);
         }
-
         on_button = document.getElementById(elementid);
         on_button.addEventListener('mousedown', do_action);
         on_button.addEventListener('touchstart', do_action);
