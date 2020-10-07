@@ -12,6 +12,7 @@ from socket import (
 )
 from threading import Thread
 
+import errors
 import current_values
 
 
@@ -102,6 +103,8 @@ class ServiceAnnouncer(Thread):
         data = {"hostname": self.hostname}
         while True:
             data.update({"payload": current_values.get_values()})
+            data["payload"]["error_msg"] = errors.get_short(data["payload"]["error"])
+            data["payload"]["error_msg_long"] = errors.get_msg(data["payload"]["error"])
             raw = pickle.dumps(data)
             try:
                 self.sender.sendto(raw, ("255.255.255.255", self.port))

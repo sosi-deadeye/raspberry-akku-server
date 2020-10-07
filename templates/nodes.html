@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <title>Weitere Zellen</title>
+    <title>Übersicht aller Akkus</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
@@ -10,52 +10,80 @@
 
 <div class="container">
     {% if nodes %}
-        <div class="card-deck">
+        <table class="table">
+            <tr>
+                <td colspan="3"><p class="btn btn-success btn-block">Übersicht</p></td>
+            </tr>
+            <tr>
+                <td>Gesammtkapazität</td>
+                <td class="text-right">{{ nodes.values() | map(attribute='payload') | sum(attribute='capacity') | int }}</td>
+                <td>Ah</td>
+            </tr>
+            <tr>
+                <td>Gesammtladung</td>
+                <td class="text-right">{{ nodes.values() | map(attribute='payload') | sum(attribute='charge') | int }}</td>
+                <td>Ah</td>
+            </tr>
+            <tr>
+                <td>Gesammtspannung</td>
+                <td class="text-right">#</td>
+                <td>V</td>
+            </tr>
+            <tr>
+                <td>Gesammtstrom</td>
+                <td class="text-right">{{ nodes.values() | map(attribute='payload') | sum(attribute='current') | round(1) }}</td>
+                <td>A</td>
+            </tr>
+            <tr><td colspan="3"></td></tr>
             {%- for addr, data in nodes.items() %}
-                <div class="card mb-4">
-                    <!-- <img class="card-img-top" src="..." alt="Card image cap"> -->
-                    <div class="card-body">
-                        <!--                        <h5 class="card-title">{{ data['hostname'] }} - {{ addr }}</h5> -->
-                        <!--                        <p class="card-text">{{ addr }}</p> -->
-
-                        <!-- </div> -->
-                        <table class="table">
-                            <tr>
-                                <td colspan="2">
-                                    <p class="card-link btn btn-success btn-block" type="button"
-                                       onclick="location.href='{{ 'http://' + addr }}'">
-                                        [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
-                                    </p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>{{ data['payload']['capacity'] }}</td>
-                                <td>Ah</td>
-                            </tr>
-                            <tr>
-                                <td>{{ data['payload']['charge'] | round(1) }}</td>
-                                <td>Ah</td>
-                            </tr>
-                            <tr>
-                                <td>{{ data['payload']['voltage'] | round(1) }}</td>
-                                <td>V</td>
-                            </tr>
-                            <tr>
-                                <td>{{ data['payload']['current'] | round(1) }}</td>
-                                <td>A</td>
-                            </tr>
-                            <tr>
-                                <td>{{ data['payload']['temperature'] | round(1) }}</td>
-                                <td>°C</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-                <div class="w-100 d-md-flex"><!-- wrap every 2 on sm--></div>
+                <tr>
+                    <td colspan="3">
+                        <p class="btn btn-success btn-block" type="button"
+                           onclick="location.href='{{ 'http://' + addr }}'">
+                            [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Kapazität</td>
+                    <td class="text-right">{{ data['payload']['capacity'] }}</td>
+                    <td>Ah</td>
+                </tr>
+                <tr>
+                    <td>Ladung</td>
+                    <td class="text-right">{{ data['payload']['charge'] | round(1) }}</td>
+                    <td>Ah</td>
+                </tr>
+                <tr>
+                    <td>Spannung</td>
+                    <td class="text-right">{{ data['payload']['voltage'] | round(1) }}</td>
+                    <td>V</td>
+                </tr>
+                <tr>
+                    <td>Strom</td>
+                    <td class="text-right">{{ data['payload']['current'] | round(1) }}</td>
+                    <td>A</td>
+                </tr>
+                <tr>
+                    <td>Temperatur</td>
+                    <td class="text-right">{{ data['payload']['temperature'] | round(1) }}</td>
+                    <td>°C</td>
+                </tr>
+                {%- for cell_voltage in data['payload']['cell_voltages'] %}
+                    <tr>
+                        <td>Zelle {{ loop.index }}</td>
+                        <td class="text-right">{{ cell_voltage|round(2) }}</td>
+                        <td>V</td>
+                    </tr>
+                {%- endfor %}
+                <tr>
+                    <td>Fehler</td>
+                    <td colspan="1" class="text-right">{{ data['payload']['error_msg'] }}</td>
+                </tr>
             {% endfor -%}
-        </div>
+        </table>
     {% else %}
-        <h4 class="bg-warning">Keine anderen WLAN-Module gefunden</h4>
+        <h4 class="bg-warning"></h4>
     {% endif %}
 </div>
 

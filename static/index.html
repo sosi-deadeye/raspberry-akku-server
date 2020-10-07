@@ -181,7 +181,7 @@
                     document.getElementById('hostname').innerText = nodes[ip]["hostname"];
                     document.getElementById('voltage').innerText = voltage.toFixed(2);
                     document.getElementById('temperature').innerText = payload["temperature"].toFixed(1);
-                    document.getElementById('error').innerText = payload["error"];
+                    document.getElementById('error').innerText = payload["error_msg"];
 
                     for (const cell_idx in cell_voltages) {
                         cell_id = "cell" + cell_idx;
