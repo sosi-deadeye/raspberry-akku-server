@@ -145,14 +145,33 @@ def iwlist():
     return {"aps": scan_wlan.get_cells()}
 
 
-async def nodes_live():
+def self_live() -> None:
     control.send_multipart([b"CONTROL", b"LIVE"])
     last_check()
+
+
+def send_live(url: str) -> None:
+    try:
+        requests.get(url, timeout=1)
+    except requests.Timeout:
+        pass
+    except Exception as e:
+        print(repr(e))
+
+
+async def nodes_live():
+    self_live()
     for ip, node in node_server.nodes.items():
         if node["self"]:
             continue
         node_live_url = f"http://{ip}/api/live"
-        loop.run_in_executor(None, requests.get, node_live_url)
+        loop.run_in_executor(None, send_live, node_live_url)
+
+
+@app.get("/api/live")
+def live():
+    self_live()
+    return True
 
 
 @app.get("/api/aktuelle_werte", response_model=CurrentValues)
