@@ -130,6 +130,10 @@
                 let cell_voltages;
                 let error_msg;
                 let id;
+                let total_current = 0.0;
+                let total_capacity = 0;
+                let total_charge = 0.0;
+                let total_voltage = 0.0;
                 for (const node in nodes) {
                     g = getter(nodes, node);
                     capacity = g("capacity");
@@ -139,6 +143,12 @@
                     temperature = g("temperature");
                     cell_voltages = g("cell_voltages");
                     error_msg = g("error_msg");
+
+                    total_capacity += capacity;
+                    total_charge += charge;
+                    total_voltage += voltage;
+                    total_current += current;
+
                     document.getElementById("capacity_" + i).innerText = capacity.toFixed(0);
                     document.getElementById("charge_" + i).innerText = charge.toFixed(0);
                     document.getElementById("voltage_" + i).innerText = voltage.toFixed(2);
@@ -154,6 +164,11 @@
                     }
                     i++;
                 }
+                let count = i - 1;
+                document.getElementById("total_capacity").innerText = total_capacity.toFixed(0);
+                document.getElementById("total_charge").innerText = total_charge.toFixed(0);
+                document.getElementById("total_voltage").innerText = (total_voltage / count).toFixed(1);
+                document.getElementById("total_current").innerText = total_current.toFixed(1);
             }
         )
     }
@@ -171,6 +186,7 @@
 <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
 <script src="/vendor/popper/popper.min.js"></script>
 <script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
-<script src="/vendor/sweetalert/sweetalert.min.js"></script>
+<!-- <script src="/vendor/sweetalert/sweetalert.min.js"></script> -->
+
 </body>
 </html>
