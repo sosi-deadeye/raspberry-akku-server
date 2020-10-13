@@ -556,7 +556,12 @@ async def api_get_nodes(request: Request):
 async def get_nodes(request: Request):
     await nodes_live()
     return templates.TemplateResponse(
-        "nodes.html", {"request": request, "nodes": node_server.nodes_sorted,}
+        "nodes.html",
+        {
+            "request": request,
+            "nodes": node_server.nodes_sorted,
+            "total_voltage": current_values.get_values().get("voltage"),
+        },
     )
 
 

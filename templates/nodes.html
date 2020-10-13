@@ -16,26 +16,32 @@
             </tr>
             <tr>
                 <td>Gesammtkapazität</td>
-                <td class="text-right">{{ nodes.values() | map(attribute='payload') | sum(attribute='capacity') | int }}</td>
+                <td class="text-right"
+                    id="total_capacity">{{ nodes.values() | map(attribute='payload') | sum(attribute='capacity') | int }}</td>
                 <td>Ah</td>
             </tr>
             <tr>
                 <td>Gesammtladung</td>
-                <td class="text-right">{{ nodes.values() | map(attribute='payload') | sum(attribute='charge') | int }}</td>
+                <td class="text-right"
+                    id="total_charge">{{ nodes.values() | map(attribute='payload') | sum(attribute='charge') | int }}</td>
                 <td>Ah</td>
             </tr>
             <tr>
                 <td>Gesammtspannung</td>
-                <td class="text-right">#</td>
+                <td class="text-right" id="total_voltage">{{ total_voltage | round(1) }}</td>
                 <td>V</td>
             </tr>
             <tr>
                 <td>Gesammtstrom</td>
-                <td class="text-right">{{ nodes.values() | map(attribute='payload') | sum(attribute='current') | round(1) }}</td>
+                <td class="text-right"
+                    id="total_current">{{ nodes.values() | map(attribute='payload') | sum(attribute='current') | round(1) }}</td>
                 <td>A</td>
             </tr>
-            <tr><td colspan="3"></td></tr>
+            <tr>
+                <td colspan="3"></td>
+            </tr>
             {%- for addr, data in nodes.items() %}
+                {% set node_loop = loop %}
                 <tr>
                     <td colspan="3">
                         <p class="btn btn-success btn-block" type="button"
@@ -46,46 +52,121 @@
                 </tr>
                 <tr>
                     <td>Kapazität</td>
-                    <td class="text-right">{{ data['payload']['capacity'] }}</td>
+                    <td class="text-right"
+                        id="{{ 'capacity_{}'.format(loop.index) }}">{{ data['payload']['capacity'] }}</td>
                     <td>Ah</td>
                 </tr>
                 <tr>
                     <td>Ladung</td>
-                    <td class="text-right">{{ data['payload']['charge'] | round(1) }}</td>
+                    <td class="text-right"
+                        id="{{ 'charge_{}'.format(loop.index) }}">{{ data['payload']['charge'] | round(1) }}</td>
                     <td>Ah</td>
                 </tr>
                 <tr>
                     <td>Spannung</td>
-                    <td class="text-right">{{ data['payload']['voltage'] | round(1) }}</td>
+                    <td class="text-right"
+                        id="{{ 'voltage_{}'.format(loop.index) }}">{{ data['payload']['voltage'] | round(1) }}</td>
                     <td>V</td>
                 </tr>
                 <tr>
                     <td>Strom</td>
-                    <td class="text-right">{{ data['payload']['current'] | round(1) }}</td>
+                    <td class="text-right"
+                        id="{{ 'current_{}'.format(loop.index) }}">{{ data['payload']['current'] | round(1) }}</td>
                     <td>A</td>
                 </tr>
                 <tr>
                     <td>Temperatur</td>
-                    <td class="text-right">{{ data['payload']['temperature'] | round(1) }}</td>
+                    <td class="text-right"
+                        id="{{ 'temperature_{}'.format(loop.index) }}">{{ data['payload']['temperature'] | round(1) }}</td>
                     <td>°C</td>
                 </tr>
                 {%- for cell_voltage in data['payload']['cell_voltages'] %}
                     <tr>
                         <td>Zelle {{ loop.index }}</td>
-                        <td class="text-right">{{ cell_voltage|round(2) }}</td>
+                        <td class="text-right"
+                            id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">{{ cell_voltage|round(2) }}</td>
                         <td>V</td>
                     </tr>
                 {%- endfor %}
                 <tr>
                     <td>Fehler</td>
-                    <td colspan="1" class="text-right">{{ data['payload']['error_msg'] }}</td>
+                    <td colspan="1" class="text-right"
+                        id="{{ 'error_{}'.format(node_loop.index) }}">{{ data['payload']['error_msg'] }}</td>
+                    <td></td>
                 </tr>
             {% endfor -%}
+            <tr>
+                <td colspan="3">
+                    <p class="btn btn-success btn-block" type="button"
+                       onclick="location.href='{{ '/' }}'">Zurück
+                    </p>
+                </td>
+            </tr>
         </table>
     {% else %}
         <h4 class="bg-warning"></h4>
     {% endif %}
 </div>
+
+<script type="application/javascript">
+
+    function getter(nodes, node) {
+        return function (key) {
+            return nodes[node]["payload"][key]
+        }
+    }
+
+    function update() {
+        fetch('/api/nodes').then(function (response) {
+            return response.json();
+        }).then(
+            function (nodes) {
+                let i = 1;
+                let capacity;
+                let charge;
+                let voltage;
+                let current;
+                let temperature;
+                let cell_voltages;
+                let error_msg;
+                let id;
+                for (const node in nodes) {
+                    g = getter(nodes, node);
+                    capacity = g("capacity");
+                    charge = g("charge");
+                    voltage = g("voltage");
+                    current = g("current");
+                    temperature = g("temperature");
+                    cell_voltages = g("cell_voltages");
+                    error_msg = g("error_msg");
+                    document.getElementById("capacity_" + i).innerText = capacity.toFixed(0);
+                    document.getElementById("charge_" + i).innerText = charge.toFixed(0);
+                    document.getElementById("voltage_" + i).innerText = voltage.toFixed(2);
+                    document.getElementById("current_" + i).innerText = current.toFixed(1);
+                    document.getElementById("temperature_" + i).innerText = temperature.toFixed(1);
+                    document.getElementById("error_" + i).innerText = error_msg;
+                    let cell_idx = 1;
+                    for (const cell in cell_voltages) {
+                        voltage = cell_voltages[cell];
+                        id = "cell_voltage_" + i + "_" + cell_idx;
+                        document.getElementById(id).innerText = voltage.toFixed(2);
+                        cell_idx++;
+                    }
+                    i++;
+                }
+            }
+        )
+    }
+
+    function auto_update() {
+        setInterval(function () {
+            update();
+        }, 1000)
+    }
+
+    auto_update();
+
+</script>
 
 <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
 <script src="/vendor/popper/popper.min.js"></script>
