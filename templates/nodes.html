@@ -81,6 +81,17 @@
                         id="{{ 'temperature_{}'.format(loop.index) }}">{{ data['payload']['temperature'] | round(1) }}</td>
                     <td>°C</td>
                 </tr>
+                <tr id="tr_upper_cell_voltage_{{ loop.index }}">
+                    <td>Obere Zellspannung</td>
+                    <td class="text-right" id="upper_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages']| max | round(2) }}</td>
+                    <td>V</td>
+                </tr>
+                <tr id="tr_lower_cell_voltage_{{ loop.index }}">
+                    <td>Untere Zellspannung</td>
+                    <td class="text-right" id="lower_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages'] | min | round(2) }}</td>
+                    <td>V</td>
+                </tr>
+                </tr>
                 {%- for cell_voltage in data['payload']['cell_voltages'] %}
                     <tr>
                         <td>Zelle {{ loop.index }}</td>
@@ -110,6 +121,8 @@
 </div>
 
 <script type="application/javascript">
+    let first_run = true;
+    let lower_upper_voltage = false;
 
     function getter(nodes, node) {
         return function (key) {
@@ -135,6 +148,7 @@
                 let total_capacity = 0;
                 let total_charge = 0.0;
                 let total_voltage = 0.0;
+                let g;
                 for (const node in nodes) {
                     g = getter(nodes, node);
                     capacity = g("capacity");
@@ -151,11 +165,14 @@
                     total_current += current;
 
                     document.getElementById("capacity_" + i).innerText = capacity.toFixed(0);
-                    document.getElementById("charge_" + i).innerText = charge.toFixed(0);
+                    // document.getElementById("charge_" + i).innerText = charge.toFixed(0);
                     document.getElementById("voltage_" + i).innerText = voltage.toFixed(2);
                     document.getElementById("current_" + i).innerText = current.toFixed(1);
                     document.getElementById("temperature_" + i).innerText = temperature.toFixed(1);
                     document.getElementById("error_" + i).innerText = error_msg;
+                    document.getElementById("upper_cell_voltage_" + i).innerText = Math.max(... cell_voltages).toFixed(2);
+                    document.getElementById("lower_cell_voltage_" + i).innerText = Math.min(... cell_voltages).toFixed(2);
+
                     let cell_idx = 1;
                     for (const cell in cell_voltages) {
                         voltage = cell_voltages[cell];
