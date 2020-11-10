@@ -155,6 +155,7 @@
 
 <script type="text/javascript">
     let first_run = true;
+    let lower_upper_voltage = false;
 
     function update() {
         fetch('/api/nodes').then(function (response) {
@@ -168,6 +169,8 @@
             let total_charge = 0;
             let cell_voltages;
             let cell_id = "";
+            let element;
+            let tr_id;
             for (ip in nodes) {
                 // console.log(ip);
                 payload = nodes[ip]["payload"];
@@ -176,21 +179,48 @@
                 total_charge += payload["charge"];
                 if (nodes[ip]["self"]) {
                     voltage = payload["voltage"];
+                    //voltage = 24;
                     cell_voltages = payload["cell_voltages"];
-
+                    //console.log(voltage)
+                    //console.log(first_run)
+                    //console.log(lower_upper_voltage)
                     document.getElementById('hostname').innerText = nodes[ip]["hostname"];
                     document.getElementById('voltage').innerText = voltage.toFixed(2);
                     document.getElementById('temperature').innerText = payload["temperature"].toFixed(1);
                     document.getElementById('error').innerText = payload["error_msg"];
 
-                    for (const cell_idx in cell_voltages) {
-                        cell_id = "cell" + cell_idx;
-                        //console.log(cell_id);
-                        document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2);
+                    if (first_run) {
+                        first_run = false;
+                        if (voltage > 15) {
+                            lower_upper_voltage = true;
+                            for (let tr_cell_idx = 0; tr_cell_idx < 4; tr_cell_idx++) {
+                                tr_id = "tr_cell_" + tr_cell_idx;
+                                element = document.getElementById(tr_id);
+                                //console.log(tr_id);
+                                if (!element) {
+                                    break;
+                                }
+                                else {
+                                    element.remove();
+                                }
+                            }
+                        } else {
+                            document.getElementById("tr_cell_lower").remove();
+                            document.getElementById("tr_cell_upper").remove();
+                        }
                     }
 
-                    document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2);
-                    document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2);
+                    if (!lower_upper_voltage) {
+                        for (const cell_idx in cell_voltages) {
+                            cell_id = "cell" + cell_idx;
+                            //console.log(cell_id);
+                            document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2);
+                        }
+                    }
+                    if (lower_upper_voltage) {
+                        document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2);
+                        document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2);
+                    }
                 }
                 document.getElementById('capacity').innerText = total_capacity.toFixed(0);
                 document.getElementById('charge').innerText = total_charge.toFixed(0);
