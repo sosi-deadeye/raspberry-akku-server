@@ -57,11 +57,6 @@
                     <td>Ah</td>
                 </tr>
                 <tr>
-<!--                    <td>Ladung</td>
-                    <td class="text-right"
-                        id="{{ 'charge_{}'.format(loop.index) }}">{{ data['payload']['charge'] | round(1) }}</td>
-                    <td>Ah</td>
-                -->
                 </tr>
                 <tr>
                     <td>Spannung</td>
@@ -165,7 +160,6 @@
                     total_current += current;
 
                     document.getElementById("capacity_" + i).innerText = capacity.toFixed(0);
-                    // document.getElementById("charge_" + i).innerText = charge.toFixed(0);
                     document.getElementById("voltage_" + i).innerText = voltage.toFixed(2);
                     document.getElementById("current_" + i).innerText = current.toFixed(1);
                     document.getElementById("temperature_" + i).innerText = temperature.toFixed(1);
