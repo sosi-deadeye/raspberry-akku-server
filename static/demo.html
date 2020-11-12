@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>Akku</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center text-success" id="hostname">LiFePo4-Akku</h1>
+    <div class="table-responsive">
+        <table class="table table-striped table-dark">
+            <tbody>
+            <tr>
+                <td>Kapazität</td>
+                <td>
+                    <div class="row justify-content-end" id="capacity">#</div>
+                </td>
+                <td>Ah</td>
+            </tr>
+            <tr>
+                <td>Ladung abs.</td>
+                <td>
+                    <div class="row justify-content-end" id="charge">#</div>
+                </td>
+                <td>Ah</td>
+            </tr>
+            <tr>
+                <td>Ladung rel.</td>
+                <td>
+                    <div class="row justify-content-end" id="charge_rel">#</div>
+                </td>
+                <td>%</td>
+            </tr>
+            <tr>
+                <td>Spannung</td>
+                <td>
+                    <div class="row justify-content-end" id="voltage">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr>
+                <td>Strom</td>
+                <td>
+                    <div class="row justify-content-end" id="current">#</div>
+                </td>
+                <td>A</td>
+            </tr>
+            <tr>
+                <td>Leistung</td>
+                <td>
+                    <div class="row justify-content-end" id="power">#</div>
+                </td>
+                <td>W</td>
+            </tr>
+            <tr id="tr_cell_upper">
+                <td>Obere Zellspannung</td>
+                <td>
+                    <div class="row justify-content-end" id="cell_high">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr id="tr_cell_lower">
+                <td>Untere Zellspannung</td>
+                <td>
+                    <div class="row justify-content-end" id="cell_low">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr id="tr_cell_0">
+                <td>Zelle 1</td>
+                <td>
+                    <div class="row justify-content-end" id="cell0">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+
+            <tr id="tr_cell_1">
+                <td>Zelle 2</td>
+                <td>
+                    <div class="row justify-content-end" id="cell1">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr id="tr_cell_2">
+                <td>Zelle 3</td>
+                <td>
+                    <div class="row justify-content-end" id="cell2">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr id="tr_cell_3">
+                <td>Zelle 4</td>
+                <td>
+                    <div class="row justify-content-end" id="cell3">#</div>
+                </td>
+                <td>V</td>
+            </tr>
+            <tr>
+                <td>Temperatur</td>
+                <td>
+                    <div class="row justify-content-end" id="temperature">#</div>
+                </td>
+                <td>°C</td>
+            </tr>
+            <tr>
+                <td>Fehler</td>
+                <td colspan=2>
+                    <div class="row justify-content-center" id="error">#</div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <button id="on" type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
+                    </button>
+                </td>
+                <td colspan=3>
+                    <button id="off" type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
+                    </button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=1>
+                    <button id="reset" type="button" class="btn btn-primary btn-block btn-lg"><small>Akku Reset</small>
+                    </button>
+                </td>
+                <td colspan=2>
+                    <button id="ack" type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler Reset</small>
+                    </button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=3>
+                    <button id="shutdown" type="button" class="btn btn-dark btn-block btn-lg"><small>WLAN
+                        herunterfahren</small></button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=3>
+                    <button onclick="window.location.href='#'" id="settings" type="button"
+                            class="btn btn-dark btn-block btn-lg"><small>Einstellungen / Internet</small></button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=3>
+                    <button onclick="window.location.href='#'" id="settings" type="button"
+                            class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+    let errors_short = [
+        "Akku ist ausgeschaltet",
+        "Kontakt/Diodenfehler",
+        "Unterspannungsfehler",
+        "Überspannungsfehler",
+        "Ladestrom überschritten",
+        "Entladestrom überschritten",
+        "Kurzschlussfehler",
+        "Auto-Reset fehlerhaft",
+        "Ladetemperatur unterschritten",
+        "Ladetemperatur zu niedrig",
+        "Ladetemperatur zu hoch",
+        "Externer Akku Fehler",
+    ];
+    let first_run = true;
+    let lower_upper_voltage = false;
+
+    function uniform(min, max) {
+        let diff = max - min;
+        let rnd = Math.random() * diff + min;
+        rnd = Math.min(rnd, max);
+        rnd = Math.max(rnd, min);
+        return rnd;
+    }
+
+    function randint(min, max) {
+        let diff = max - min;
+        let result = Math.random() * diff + min;
+        result = result + min;
+        result = Math.min(result, max);
+        return result.toFixed(0);
+    }
+
+    function update() {
+        let voltage = uniform(13, 13.5);
+        let total_current = uniform(50, 64.5);
+        let ip = "192.168.0.1";
+        let total_capacity = 200;
+        let total_charge = 100;
+        let cell_voltages = [3.33, 3.33, 3.33, 3.33];
+        let cell_id = "";
+        let element;
+        let tr_id;
+        if (first_run) {
+            first_run = false;
+            if (voltage > 15) {
+                lower_upper_voltage = true;
+                for (let tr_cell_idx = 0; tr_cell_idx < 4; tr_cell_idx++) {
+                    tr_id = "tr_cell_" + tr_cell_idx;
+                    element = document.getElementById(tr_id);
+                    if (!element) {
+                        break;
+                    } else {
+                        element.remove();
+                    }
+                }
+            } else {
+                document.getElementById("tr_cell_lower").remove();
+                document.getElementById("tr_cell_upper").remove();
+            }
+        }
+
+        if (!lower_upper_voltage) {
+            for (const cell_idx in cell_voltages) {
+                cell_id = "cell" + cell_idx;
+                document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2);
+            }
+        }
+
+        if (lower_upper_voltage) {
+            document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2);
+            document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2);
+        }
+
+        document.getElementById('capacity').innerText = total_capacity.toFixed(0);
+        document.getElementById('charge').innerText = total_charge.toFixed(0);
+        document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1);
+        document.getElementById('current').innerText = total_current.toFixed(1);
+        document.getElementById('power').innerText = (voltage * total_current).toFixed(0);
+        document.getElementById('voltage').innerText = (voltage).toFixed(1);
+        document.getElementById('temperature').innerText = uniform(25, 33).toFixed(1);
+        document.getElementById('error').innerText = errors_short[randint(0, errors_short.length - 1)];
+    }
+</script>
+
+<script type="text/javascript">
+    // update all 10000 ms
+    (function () {
+        update();
+        setInterval(function () {
+            update();
+        }, 1000);
+    }())
+</script>
+
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="/vendor/sweetalert/sweetalert.min.js"></script>
+</body>
+</html>
