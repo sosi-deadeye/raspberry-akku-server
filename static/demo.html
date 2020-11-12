@@ -8,7 +8,7 @@
 </head>
 <body>
 <div class="container">
-    <h1 class="text-center text-success" id="hostname">LiFePo4-Akku</h1>
+    <h1 class="text-center text-success" id="hostname">LiFePo4-Akku DEMO</h1>
     <div class="table-responsive">
         <table class="table table-striped table-dark">
             <tbody>
@@ -170,6 +170,16 @@
     ];
     let first_run = true;
     let lower_upper_voltage = false;
+    const urlParams = new URLSearchParams(window.location.search);
+    const U = urlParams.get('U');
+    let u_min, u_max;
+    if (U > 15) {
+        u_min = 24;
+        u_max = 26;
+    } else {
+        u_min = 12;
+        u_max = 13.8;
+    }
 
     function uniform(min, max) {
         let diff = max - min;
@@ -187,13 +197,17 @@
         return result.toFixed(0);
     }
 
+    function get_cell_voltages() {
+        return [uniform(3.2, 3.4), uniform(3.2, 3.4), uniform(3.2, 3.4), uniform(3.2, 3.4)];
+    }
+
     function update() {
-        let voltage = uniform(13, 13.5);
+        let voltage = uniform(u_min, u_max);
         let total_current = uniform(50, 64.5);
         let ip = "192.168.0.1";
         let total_capacity = 200;
         let total_charge = 100;
-        let cell_voltages = [3.33, 3.33, 3.33, 3.33];
+        let cell_voltages = get_cell_voltages();
         let cell_id = "";
         let element;
         let tr_id;
