@@ -10,106 +10,68 @@
 <div class="container">
     <h1 class="text-center text-success" id="hostname">LiFePo4-Akku</h1>
     <div class="table-responsive">
-        <table class="table table-striped table-dark">
+        <table class="table table-striped table-dark" style="margin-bottom: 0;">
             <tbody>
             <tr>
                 <td>Kapazität</td>
-                <td>
-                    <div class="row justify-content-end" id="capacity">#</div>
-                </td>
-                <td>Ah</td>
+                <td id="capacity" class="text-right">#</td>
             </tr>
             <tr>
                 <td>Ladung abs.</td>
-                <td>
-                    <div class="row justify-content-end" id="charge">#</div>
-                </td>
-                <td>Ah</td>
+                <td id="charge" class="text-right">#</td>
             </tr>
             <tr>
                 <td>Ladung rel.</td>
-                <td>
-                    <div class="row justify-content-end" id="charge_rel">#</div>
-                </td>
-                <td>%</td>
+                <td id="charge_rel" class="text-right">#</td>
             </tr>
             <tr>
                 <td>Spannung</td>
-                <td>
-                    <div class="row justify-content-end" id="voltage">#</div>
-                </td>
-                <td>V</td>
+                <td id="voltage" class="text-right">#</td>
             </tr>
             <tr>
                 <td>Strom</td>
-                <td>
-                    <div class="row justify-content-end" id="current">#</div>
-                </td>
-                <td>A</td>
+                <td id="current" class="text-right">#</td>
             </tr>
             <tr>
                 <td>Leistung</td>
-                <td>
-                    <div class="row justify-content-end" id="power">#</div>
-                </td>
-                <td>W</td>
+                <td id="power" class="text-right">#</td>
             </tr>
             <tr id="tr_cell_upper">
                 <td>Obere Zellspannung</td>
-                <td>
-                    <div class="row justify-content-end" id="cell_high">#</div>
-                </td>
-                <td>V</td>
+                <td id="cell_high" class="text-right">#</td>
             </tr>
             <tr id="tr_cell_lower">
                 <td>Untere Zellspannung</td>
-                <td>
-                    <div class="row justify-content-end" id="cell_low">#</div>
-                </td>
-                <td>V</td>
+                <td id="cell_low" class="text-right">#</td>
             </tr>
             <tr id="tr_cell_0">
                 <td>Zelle 1</td>
-                <td>
-                    <div class="row justify-content-end" id="cell0">#</div>
-                </td>
-                <td>V</td>
+                <td id="cell0" class="text-right">#</td>
             </tr>
-
             <tr id="tr_cell_1">
                 <td>Zelle 2</td>
-                <td>
-                    <div class="row justify-content-end" id="cell1">#</div>
-                </td>
-                <td>V</td>
+                <td id="cell1" class="text-right">#</td>
             </tr>
             <tr id="tr_cell_2">
                 <td>Zelle 3</td>
-                <td>
-                    <div class="row justify-content-end" id="cell2">#</div>
-                </td>
-                <td>V</td>
+                <td id="cell2" class="text-right">#</td>
             </tr>
             <tr id="tr_cell_3">
                 <td>Zelle 4</td>
-                <td>
-                    <div class="row justify-content-end" id="cell3">#</div>
-                </td>
-                <td>V</td>
+                <td id="cell3" class="text-right">#</td>
             </tr>
             <tr>
                 <td>Temperatur</td>
-                <td>
-                    <div class="row justify-content-end" id="temperature">#</div>
-                </td>
-                <td>°C</td>
+                <td id="temperature" class="text-right">#</td>
             </tr>
             <tr>
                 <td>Fehler</td>
-                <td colspan=2>
-                    <div class="row justify-content-center" id="error">#</div>
-                </td>
+                <td id="error" class="text-right">#</td>
             </tr>
+            </tbody>
+        </table>
+        <table class="table table-striped table-dark">
+            <tbody>
             <tr>
                 <td>
                     <button id="on" type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
@@ -172,23 +134,18 @@
             let element;
             let tr_id;
             for (ip in nodes) {
-                // console.log(ip);
                 payload = nodes[ip]["payload"];
                 total_current += payload["current"];
                 total_capacity += payload["capacity"];
                 total_charge += payload["charge"];
                 if (nodes[ip]["self"]) {
                     voltage = payload["voltage"];
-                    //voltage = 24;
                     cell_voltages = payload["cell_voltages"];
-                    //console.log(voltage)
-                    //console.log(first_run)
-                    //console.log(lower_upper_voltage)
                     document.getElementById('hostname').innerText = nodes[ip]["hostname"];
-                    document.getElementById('voltage').innerText = voltage.toFixed(2);
-                    document.getElementById('temperature').innerText = payload["temperature"].toFixed(1);
+                    document.getElementById('voltage').innerText = voltage.toFixed(2) + " V";
+                    document.getElementById('temperature').innerText = payload["temperature"].toFixed(1) + " °C";
                     document.getElementById('error').innerText = payload["error_msg"];
-
+                    
                     if (first_run) {
                         first_run = false;
                         if (voltage > 15) {
@@ -199,8 +156,7 @@
                                 //console.log(tr_id);
                                 if (!element) {
                                     break;
-                                }
-                                else {
+                                } else {
                                     element.remove();
                                 }
                             }
@@ -214,19 +170,19 @@
                         for (const cell_idx in cell_voltages) {
                             cell_id = "cell" + cell_idx;
                             //console.log(cell_id);
-                            document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2);
+                            document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2) + " V";
                         }
                     }
                     if (lower_upper_voltage) {
-                        document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2);
-                        document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2);
+                        document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                        document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2) + " V";
                     }
                 }
-                document.getElementById('capacity').innerText = total_capacity.toFixed(0);
-                document.getElementById('charge').innerText = total_charge.toFixed(0);
-                document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1);
-                document.getElementById('current').innerText = total_current.toFixed(1);
-                document.getElementById('power').innerText = (voltage * total_current).toFixed(0);
+                document.getElementById('capacity').innerText = total_capacity.toFixed(0) + " Ah";
+                document.getElementById('charge').innerText = total_charge.toFixed(0) + " Ah";
+                document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1) + " %";
+                document.getElementById('current').innerText = total_current.toFixed(1) + " A";
+                document.getElementById('power').innerText = (voltage * total_current).toFixed(0) + " W";
             }
         }).catch(error => {
             document.getElementById('capacity').innerText = "#";
@@ -261,7 +217,7 @@
 
     function register_event(endpoint, elementid, msg_ok_title, msg_ok_text, msg_error, timeout) {
         function do_action(event) {
-            on_timeout = setTimeout(function () {
+            const on_timeout = setTimeout(function () {
                 fetch(endpoint, {"method": "POST"}).then(function (response) {
                     return response.json();
                 }).then(function (myJson) {
@@ -276,7 +232,7 @@
             }, timeout);
         }
 
-        on_button = document.getElementById(elementid);
+        const on_button = document.getElementById(elementid);
         on_button.addEventListener('mousedown', do_action);
         on_button.addEventListener('touchstart', do_action);
         on_button.addEventListener('touchend', cancel_timer);
