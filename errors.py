@@ -8,7 +8,8 @@ error = namedtuple('error', 'header type msg short')
 error_mapping = {
         0x0001: error("eError_BattShutdown", "Akku und RelayStatus", "Akku ist ausgeschaltet", "Akku ist ausgeschaltet"),
         0x0002: error("eError_UnderVoltProtection", "Akku und RelayStatus", "Entlade-/Unterspannungsrelay hat ausgelöst (redutierter Ladestrom!)", "Unterspannung"),
-        0x0004: error("eError_OverVoltProtection", "Akku und RelayStatus", "Lade- /Überspannungsrelay hat ausgelöst (reduzierter Entladestrom!)", "Überspannung"),
+        0x0004: error("eError_OverVoltProtection", "Akku und RelayStatus", "Lade- /Überspannungsrelay hat ausgelöst (reduzierter Entladestrom!)", "Überspannungssicherung"),
+        0x0008: error("eError_RelayUnitError", "Akku und RelayStatus", "Fehler in der Relaiseinheit (Kontakt- oder Diodenfehler)", "Kontakt/Diodenfehler"),
         # 0x000F: error("eError_BattStateMask", "Akku und RelayStatus", "Maske für Akku Status Meldungen"),
         0x0010: error("eError_UnderVoltage", "SpannungsFehler", "Unterspannungsfehler (bitte laden)", "Unterspannungsfehler"),
         0x0020: error("eError_OverVoltage", "SpannungsFehler", "Überspannungsfehler", "Überspannungsfehler"),
@@ -26,7 +27,7 @@ error_mapping = {
     }
 error_topics = list(error_mapping.keys())
 error_types = {err.type for err in error_mapping.values()}
-default_error_topics = set(error_topics) - set((0x2, 0x4))
+default_error_topics = set(error_topics) - {0x2, 0x4}
 
 
 def parse_error(errorid):

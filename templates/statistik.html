@@ -1,51 +1,103 @@
 <!DOCTYPE html>
-<html>
-    <html lang="de">
-    <head>
-        <title>Statistik</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
-    </head>                  
-    <body>
-        <div class="container">
+<html lang="de">
+<head>
+    <title>Statistik</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+    <!-- Load c3.css -->
+    <link href="/vendor/c3/c3.css" rel="stylesheet">
+    <!-- Load d3.js and c3.js -->
+    <script src="/vendor/d3/d3.min.js" charset="utf-8"></script>
+    <script src="/vendor/c3/c3.min.js"></script>
+</head>
+<body>
+<div class="container">
 
-            <h1 class="text-center text-success">Statistik</h1>
-            <img src="data:image/svg+xml;base64,{{base64_svg}}" class="img-fluid mx-auto d-block" alt="Statistik">
-
-            <form action="/graph" method="post" class="p-3 mb-2 bg-dark text-white">
-                <div class="form-group">
-                    <label for="cycle">Zyklus</label>
-                    <input type="number" class="form-control" id="cycle" name="cycle" value={{cycle}}>
-                    <br />
-                    <label for="history">Stunden</label>
-                    <input type="number" class="form-control" id="history" name="history" value={{history}}>
-                    <br /><br />
-                    <button type="submit" class="btn btn-primary btn-block">Statisiken aktualisieren</button>
-                    <!- onclick="window.open('/api/statistics?cycle=14')" -->
-                    <br /><br />
-                    
-                    <div class="text-info">
-                    Der Zyklus wird nach jedem mal einschalten hochgezählt.
-                    <br />
-                    Die Anzahl der Stunden bestimmt, wie weit die Statistik zurück geht.
-                    </div>
-
-                    
-                </div>
-                <a class="btn btn-primary btn-block" onclick="get_csv();">CSV-Datei herunterladen</a>
-                <br />
-                <a href="/" class="btn btn-warning btn-block">Zurück</a>
-            </form>
+    <h1 class="text-center text-success">Statistik</h1>
+    <div id="chart" class="text-center">
+        <div class="spinner-border text-success" role="status">
+            <span class="sr-only">Lade Daten...</span>
         </div>
-        <script>
-          function get_csv() {
-            cycle = document.getElementById('cycle').value;
-            window.open('/api/statistics?cycle=' + cycle);
-          }
-        </script>
-        <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
-        <script src="/vendor/popper/popper.min.js"></script>
-        <script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
-    </body>
+    </div>
+
+    <form action="/graph" method="post" class="p-3 mb-2 bg-dark text-white">
+        <div class="form-group">
+            <label for="cycle">Zyklus</label>
+            <input type="number" class="form-control" id="cycle" name="cycle" value={{ cycle }}>
+            <br/>
+            <label for="history">Stunden</label>
+            <input type="number" class="form-control" id="history" name="history" value={{ history }}>
+            <br/><br/>
+            <button type="submit" class="btn btn-primary btn-block">Statisiken aktualisieren</button>
+            <!- onclick="window.open('/api/statistics?cycle=14')" -->
+            <br/><br/>
+
+            <div class="text-info">
+                Der Zyklus wird nach jedem mal einschalten hochgezählt.
+                <br/>
+                Die Anzahl der Stunden bestimmt, wie weit die Statistik zurück geht.
+            </div>
+
+
+        </div>
+        <a class="btn btn-primary btn-block" onclick="get_csv();">CSV-Datei herunterladen</a>
+        <br/>
+        <a href="/" class="btn btn-warning btn-block">Zurück</a>
+    </form>
+</div>
+<script>
+    function get_csv() {
+        var cycle = document.getElementById('cycle').value;
+        window.open('/api/statistics?cycle=' + cycle);
+    }
+</script>
+<script type="text/javascript">
+    var chart = c3.generate({
+        bindto: '#chart',
+        data: {
+            url: '/api/statistics?cycle=' + document.getElementById('cycle').value + '&history=' + document.getElementById('history').value + '&rounding=1',
+            x: 'timestamp',
+            xFormat: '%Y-%m-%dT%H:%M:%S.%f',
+            names: {
+                voltage: 'Spannung in V',
+                current: 'Strom in A',
+                charge: 'Ladung in Ah',
+                temperature: 'Zellentemperatur in °C',
+            },
+            hide: ['cell_voltages',],
+            type: 'spline',
+        },
+        point: {
+            show: false
+        },
+        legend: {
+            hide: ['cell_voltages',],
+        },
+        axis: {
+            x: {
+                type: 'timeseries',
+                localtime: true,
+                tick: {
+                    format: '%H:%M',
+                },
+            }
+        },
+        grid: {
+            x: {
+                show: true
+            },
+            y: {
+                show: true
+            }
+        },
+        zoom: {
+            enabled: false
+        },
+    });
+</script>
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+</body>
 </html>

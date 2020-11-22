@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>Akku - Update - Versionsinformation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h2 class="text-center text-success">Letztes update</h2>
+    <div class="text-info">
+        <div>
+            Das update benötigt einen Internetzugang.
+            Nachdem ein Update durchgeführt worden ist,
+            werden die Quelldateien übersetzt.
+
+            Der Vorgang kann bis zu einer Minute dauern.
+            Nachdem der Prozess beendet ist, wird die
+            Seite neu geladen und die letzen Änderungen werden angezeigt.
+
+            Damit alle Änderungen wirksam werden, das Modul entweder herunterfahren und neu starten
+            oder alternativ den Knopf "Neustart" betätigen.
+        </div>
+        <br>
+        <div>
+            <pre>{{ info }}</pre>
+        </div>
+        <br/><br/>
+        <form action="/api/update" method="post">
+            <button type="submit" class="btn btn-danger btn-block">Update</button>
+            <br/>
+        </form>
+        <a href="/api/restart-services" class="btn btn-primary btn-block">Neustart</a>
+        <br/>
+        <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
+    </div>
+</div>
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="/vendor/sweetalert/sweetalert.min.js"></script>
+</body>
+</html>

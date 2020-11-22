@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>Akku</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h2 class="text-center text-success" id="hostname">LiFePo4-Akku</h2>
+    <div class="table-responsive">
+        <table class="table table-striped table-dark" style="margin-bottom: 0;">
+            <tbody>
+            <tr>
+                <td>Kapazität</td>
+                <td id="capacity" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Ladung abs.</td>
+                <td id="charge" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Ladung rel.</td>
+                <td id="charge_rel" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Spannung</td>
+                <td id="voltage" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Strom</td>
+                <td id="current" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Leistung</td>
+                <td id="power" class="text-right">#</td>
+            </tr>
+            <tr id="tr_cell_upper">
+                <td>Obere Zellspannung</td>
+                <td id="cell_high" class="text-right">#</td>
+            </tr>
+            <tr id="tr_cell_lower">
+                <td>Untere Zellspannung</td>
+                <td id="cell_low" class="text-right">#</td>
+            </tr>
+            <tr id="tr_cell_0">
+                <td>Zelle 1</td>
+                <td id="cell0" class="text-right">#</td>
+            </tr>
+            <tr id="tr_cell_1">
+                <td>Zelle 2</td>
+                <td id="cell1" class="text-right">#</td>
+            </tr>
+            <tr id="tr_cell_2">
+                <td>Zelle 3</td>
+                <td id="cell2" class="text-right">#</td>
+            </tr>
+            <tr id="tr_cell_3">
+                <td>Zelle 4</td>
+                <td id="cell3" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Temperatur</td>
+                <td id="temperature" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Fehler</td>
+                <td id="error" class="text-right">#</td>
+            </tr>
+            </tbody>
+        </table>
+        <table class="table table-striped table-dark">
+            <tbody>
+            <tr>
+                <td>
+                    <button id="on" type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
+                    </button>
+                </td>
+                <td colspan=3>
+                    <button id="off" type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
+                    </button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=1>
+                    <button id="reset" type="button" class="btn btn-primary btn-block btn-lg"><small>Akku Reset</small>
+                    </button>
+                </td>
+                <td colspan=2>
+                    <button id="ack" type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler Reset</small>
+                    </button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=3>
+                    <button id="shutdown" type="button" class="btn btn-dark btn-block btn-lg"><small>WLAN
+                        herunterfahren</small></button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=3>
+                    <button onclick="window.location.href='settings.html'" id="settings" type="button"
+                            class="btn btn-dark btn-block btn-lg"><small>Einstellungen / Internet</small></button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=3>
+                    <button onclick="window.location.href='/graph'" id="settings" type="button"
+                            class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+    let first_run = true;
+    let lower_upper_voltage = false;
+
+    function update() {
+        fetch('/api/nodes').then(function (response) {
+            return response.json();
+        }).then(function (nodes) {
+            let payload;
+            let voltage = 0.0;
+            let total_current = 0.0;
+            let ip = "192.168.0.1";
+            let total_capacity = 0;
+            let total_charge = 0;
+            let cell_voltages;
+            let cell_id = "";
+            let element;
+            let tr_id;
+            for (ip in nodes) {
+                payload = nodes[ip]["payload"];
+                total_current += payload["current"];
+                total_capacity += payload["capacity"];
+                total_charge += payload["charge"];
+                if (nodes[ip]["self"]) {
+                    voltage = payload["voltage"];
+                    cell_voltages = payload["cell_voltages"];
+                    document.getElementById('hostname').innerText = nodes[ip]["hostname"];
+                    document.getElementById('voltage').innerText = voltage.toFixed(2) + " V";
+                    document.getElementById('temperature').innerText = payload["temperature"].toFixed(1) + " °C";
+                    document.getElementById('error').innerText = payload["error_msg"];
+                    
+                    if (first_run) {
+                        first_run = false;
+                        if (voltage > 15) {
+                            lower_upper_voltage = true;
+                            for (let tr_cell_idx = 0; tr_cell_idx < 4; tr_cell_idx++) {
+                                tr_id = "tr_cell_" + tr_cell_idx;
+                                element = document.getElementById(tr_id);
+                                if (!element) {
+                                    break;
+                                } else {
+                                    element.remove();
+                                }
+                            }
+                        } else {
+                            document.getElementById("tr_cell_lower").remove();
+                            document.getElementById("tr_cell_upper").remove();
+                        }
+                    }
+
+                    if (!lower_upper_voltage) {
+                        for (const cell_idx in cell_voltages) {
+                            cell_id = "cell" + cell_idx;
+                            document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2) + " V";
+                        }
+                    }
+                    if (lower_upper_voltage) {
+                        document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                        document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+                    }
+                }
+                document.getElementById('capacity').innerText = total_capacity.toFixed(0) + " Ah";
+                document.getElementById('charge').innerText = total_charge.toFixed(0) + " Ah";
+                document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1) + " %";
+                document.getElementById('current').innerText = total_current.toFixed(1) + " A";
+                document.getElementById('power').innerText = (voltage * total_current).toFixed(0) + " W";
+            }
+        }).catch(error => {
+            document.getElementById('capacity').innerText = "#";
+            document.getElementById('charge').innerText = "#";
+            document.getElementById('charge_rel').innerText = "#";
+            document.getElementById('voltage').innerText = "#";
+            document.getElementById('current').innerText = "#";
+            document.getElementById('power').innerText = "#";
+            document.getElementById('temperature').innerText = "#";
+            document.getElementById('error').innerText = "#";
+
+            let row;
+            for (let x = 0; x < 4; x++){
+                row = document.getElementById('cell' + x);
+                if (row) {
+                    row.innerText = "#";
+                } else {
+                    break;
+                }
+            }
+
+            row = document.getElementById("cell_low")
+            if (row) {
+                row.innerText = "#";
+            }
+            row = document.getElementById("cell_high")
+            if (row) {
+                row.innerText = "#";
+            }
+
+        })
+    }
+</script>
+
+
+<script type="text/javascript">
+    // update all 10000 ms
+    (function () {
+        update();
+        setInterval(function () {
+            update();
+        }, 1000);
+    }())
+</script>
+
+<script type="text/javascript">
+    function cancel_timer(eve) {
+        if (typeof on_timeout !== 'undefined') {
+            clearTimeout(on_timeout);
+        }
+    }
+
+    function register_event(endpoint, elementid, msg_ok_title, msg_ok_text, msg_error, timeout) {
+        function do_action(event) {
+            const on_timeout = setTimeout(function () {
+                fetch(endpoint, {"method": "POST"}).then(function (response) {
+                    return response.json();
+                }).then(function (myJson) {
+                    if (myJson["success"] === true) {
+                        console.log(msg_ok_title + "\n" + msg_ok_text);
+                        swal(msg_ok_title, msg_ok_text);
+                    } else {
+                        console.log(msg_error);
+                        swal(msg_error);
+                    }
+                });
+            }, timeout);
+        }
+
+        const on_button = document.getElementById(elementid);
+        on_button.addEventListener('mousedown', do_action);
+        on_button.addEventListener('touchstart', do_action);
+        on_button.addEventListener('touchend', cancel_timer);
+        on_button.addEventListener('mouseup', cancel_timer);
+    }
+
+
+    register_event("/api/on", "on", "Akku wird eingeschaltet", "", "Kein Erfolg", 2000);
+    register_event("/api/off", "off", "Akku wird ausgeschaltet", "", "Kein Erfolg", 2000);
+    register_event("/api/reset", "reset", "Akku wird zurückgesetzt.", "", "Kein Erfolg", 5000);
+    register_event("/api/ack", "ack", "Fehler wird quittiert.", "", "Kein Erfolg", 1000);
+    register_event("/api/shutdown", "shutdown", "WLAN-Modul wird heruntergefahren.", "Die WLAN-Verbindung wird abgebrochen.\n\nZum Starten des WLAN-Moduls, den Knopf erneut drücken.", "Kein Erfolg", 5000);
+</script>
+
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="/vendor/sweetalert/sweetalert.min.js"></script>
+</body>
+</html>

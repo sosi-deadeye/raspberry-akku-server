@@ -5,8 +5,8 @@ import math
 import statistics
 import struct
 import time
+from argparse import ArgumentParser
 from collections import deque
-from datetime import datetime
 from enum import IntEnum, Enum
 from logging import getLogger, basicConfig, DEBUG, INFO
 from queue import Empty as QueueEmpty
@@ -256,7 +256,7 @@ class FrameParser:
             and self.service_bits == 0
         )
 
-    def read_reply(self, serial_connection: serial.Serial) -> Tuple:
+    def read_reply(self, buffer: bytearray) -> Tuple:
         frame_type = self.frame_type["type"]
         if frame_type in (
             Data.AnswerVoltage,
@@ -265,11 +265,14 @@ class FrameParser:
             Data.AnswerCapacity,
             Data.AnswerTemperature,
         ):
-            values = struct.unpack("<f", serial_connection.read(4))
+            values = struct.unpack("<f", buffer[:4])
+            buffer[:] = buffer[4:]
         elif frame_type is Data.AnswerCellVoltage:
-            values = struct.unpack("<Bf", serial_connection.read(5))
+            values = struct.unpack("<Bf", buffer[:5])
+            buffer[:] = buffer[5:]
         elif frame_type is Fault.AnswerErrorFlags:
-            values = struct.unpack("<H", serial_connection.read(2))
+            values = struct.unpack("<H", buffer[:2])
+            buffer[:] = buffer[2:]
         elif frame_type is Mode.AnswerSetOff:
             values = (False,)
         elif frame_type is Mode.AnswerSetOn:
@@ -284,8 +287,6 @@ class FrameParser:
         return values
 
     def is_reply(self, other) -> bool:
-        # if other.service_bits == 9:
-        #     print(other, other.frame_type)
         if other.service_bits != 1:
             return (
                 self.frame == other.frame
@@ -346,13 +347,14 @@ class DataReader(Thread):
     def __init__(
         self, answer_queue: ManyQueue, queries: QueryScheduler, cells: int = 4,
     ):
+        self.timedelta_queue: Queue
         self.answer_queue: ManyQueue = answer_queue
         self.cells: int = cells
         self.queries: QueryScheduler = queries
         self.session = Session()
         self.cycle: int = set_cycle(self.session)
-        self.capacity: Optional[float] = None
-        self.last_error: Optional[int] = None
+        self.last_answer: float = 0.0
+        self.last_error: int = 0
         self.last_error_flags: Optional[int] = None
         self.error_topics: list = [
             0x0010,
@@ -364,22 +366,21 @@ class DataReader(Thread):
             0x4000,
             0x8000,
         ]
-        self.notified: bool = False
         self.row: int = 0
         self.current_values = {
             "voltage": 0.0,
             "current": 0.0,
             "charge": 0.0,
-            "capacity": 0.0,
+            "capacity": 0,
             "temperature": 0.0,
             "cell_voltages": [0.0] * self.cells,
             "error": 0,
         }
         self.db_update_interval: float = 60
         self.db_next_update: float = time.monotonic() + 120
+        self.start_time: float = time.monotonic()
         self.stats_current: deque = deque(maxlen=4)
         self.stats_charge: deque = deque(maxlen=4)
-        self.timedelta_queue: Optional[Queue] = None
         self.notified: bool = False
         super().__init__()
 
@@ -407,7 +408,7 @@ class DataReader(Thread):
             self.current_values["current"],
             self.current_values["charge"],
             self.current_values["temperature"],
-            datetime.now().timestamp(),
+            time.time(),
             *self.current_values["cell_voltages"],
         )
         set_current_values(current_data)
@@ -418,6 +419,8 @@ class DataReader(Thread):
 
         Anschließende Korrektur der Zeitstempel.
         """
+        diff: timedaemon.timedelta
+        positive: float
         if not self.timedelta_queue.empty():
             log.info(
                 f"Die Systemzeit hat sich geändert. Aktualisiere die Daten aus dem Zyklus {self.cycle}"
@@ -434,38 +437,15 @@ class DataReader(Thread):
                 stat.timestamp = corrected_timestamp
                 self.session.merge(stat)
 
-    def get_important_values(self) -> None:
-        """
-        Frage Kapazität, Status und Ladung ab
-        """
-        # log.info("Frage Kapazität ab")
-        #
-        # # ==============================
-        # send_one_query(query_capacity())
-        # _, values = self.answer_queue.get()
-        # capacity = values[0]
-        # log.info(f"Kapazität ist {capacity:.0f} Ah")
-        # # ==============================
-        #
-        # self.capacity = capacity
-        # self.current_values["capacity"] = capacity
-        # self.session.add(Configuration(capacity=self.capacity, cycle=self.cycle))
-        #
-        # send_one_query(query_load())
-        # _, values = self.answer_queue.get()
-        # charge = values[0]
-        # self.current_values["charge"] = charge
-        # log.info(f"Ladung beträgt {charge:.0f} Ah.")
-        send_many_queries([query_capacity(), query_load(), query_battery_on()])
-
     def run(self) -> None:
         """
         Diese Funktion wird indirekt durch die Methode start() aufgerufen.
         """
         log.debug("Datalogger: Starte Zeitüberwachung")
-        self.timedelta_queue: Queue = timedaemon.start()
+        self.timedelta_queue = timedaemon.start()
         log.info(f"Zyklus: {self.cycle}")
-        self.get_important_values()
+        log.info("Sende erste Abfragen")
+        # send_many_queries([query_capacity(), query_load(), query_battery_on()])
         log.info("Datalogger: Betrete Endlosschleife")
         while True:
             # Prüfe ob sich die Zeit geändert hat
@@ -477,9 +457,7 @@ class DataReader(Thread):
             self.handle_queries()
             self.database_insert()
             self.check_alert()
-
-            # 100 ms warten.
-            time.sleep(0.1)
+            # time.sleep(0.1)
 
     def check_alert(self) -> None:
         """
@@ -489,38 +467,69 @@ class DataReader(Thread):
         Ladung unter 15% ist -> E-Mail versenden
         Ladung unter 10% ist -> E-Mail versenden, WLAN-Modul herunterfahren.
         """
-        if self.capacity is not None and not math.isclose(self.capacity, 0):
+        minute = 60
+        hour = minute * 60
+        day = hour * 24
+
+        delay_override = 30 * minute
+        delay_inactivity = 3 * day
+
+        if time.monotonic() - self.start_time < delay_override:
+            return
+
+        inactivity: float = 0
+        try:
+            with open("/tmp/last_check") as fd:
+                inactivity = time.monotonic() - float(fd.read())
+        except FileNotFoundError:
+            if time.monotonic() > self.start_time + delay_inactivity:
+                self.power_off()
+        except ValueError:
+            pass
+
+        if self.current_values["capacity"] is not None and not math.isclose(
+            self.current_values["capacity"], 0
+        ):
             try:
                 median_charge = statistics.median(self.stats_charge)
                 median_current = statistics.median(self.stats_current)
             except statistics.StatisticsError:
                 return
-            relative_load = (median_charge / self.capacity) * 100
-            # log.info(f'Relative Ladung {relative_load}')
-            if not self.notified and 10 < relative_load < 15:
-                log.warning("Ladung unter 15%. E-Mail wird gesendet.")
-                notify_thread = Thread(
-                    target=notify.send_report,
-                    args=(
-                        "Die Ladung des Akkus liegt zwuschen 10 und 15%. Bitte nachladen.",
-                    ),
-                )
-                notify_thread.start()
-                self.notified = True
-            elif relative_load < 10 and median_current < 0:
-                notify.send_report(
-                    "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
-                )
-                log.warning(f"Achtung Ladung: {relative_load:.1f} %")
-                GPIO.setup(5, GPIO.OUT)
-                GPIO.output(5, True)
-                time.sleep(2)
-                GPIO.output(5, False)
-                time.sleep(1)
-                GPIO.output(5, True)
-                time.sleep(2)
-                GPIO.output(5, False)
-                call(["shutdown", "-h", "0"])
+            relative_load = (median_charge / self.current_values["capacity"]) * 100
+            current_threshold = 2.0
+            if median_current < current_threshold:
+
+                warning_limit = 15
+                off_limit = 10
+
+                if not self.notified and off_limit < relative_load < warning_limit:
+                    log.warning("Ladung unter 15%. E-Mail wird gesendet.")
+                    notify_thread = Thread(
+                        target=notify.send_report,
+                        args=(
+                            "Die Ladung des Akkus liegt zwuschen 10 und 15%. Bitte nachladen.",
+                        ),
+                    )
+                    notify_thread.start()
+                    self.notified = True
+                elif relative_load < off_limit:
+                    notify.send_report(
+                        "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
+                    )
+                    log.warning(f"Achtung Ladung: {relative_load:.1f} %")
+                    self.power_off()
+
+    @staticmethod
+    def power_off():
+        GPIO.setup(5, GPIO.OUT)
+        GPIO.output(5, True)
+        time.sleep(2)
+        GPIO.output(5, False)
+        time.sleep(1)
+        GPIO.output(5, True)
+        time.sleep(2)
+        GPIO.output(5, False)
+        call(["shutdown", "-h", "0"])
 
     def database_insert(self) -> None:
         """
@@ -544,17 +553,24 @@ class DataReader(Thread):
             self.row += 1
             self.db_next_update = time.monotonic() + self.db_update_interval
 
-    @staticmethod
-    def send_queries(queries: List[bytes, ...]) -> None:
-        if not queries:
-            return
-        send_many_queries(queries)
+    def send_queries(self, queries: List[bytes]) -> None:
+        # Prüfe Kapazität
+        if math.isclose(self.current_values["capacity"], 0):
+            log.info("Frage Kapazität ab.")
+            send_many_queries([query_capacity()])
+
+        if queries:
+            send_many_queries(queries)
 
     def handle_queries(self) -> None:
         for frame_type, values in self.answer_queue.get_many():
             frame_type = frame_type["type"]
+            # log.debug(f"Antwort: {frame_type} | Werte: {values}")
             if frame_type is Data.AnswerCapacity:
                 self.current_values["capacity"] = values[0]
+                log.info(f"Kapazität: {values[0]}")
+                self.session.add(Configuration(capacity=values[0], cycle=self.cycle))
+                self.session.commit()
             elif frame_type is Data.AnswerVoltage:
                 self.current_values["voltage"] = values[0]
             elif frame_type is Data.AnswerCurrent:
@@ -578,6 +594,7 @@ class DataReader(Thread):
             elif frame_type is Mode.AnswerSetOn:
                 self.session.add(State(cycle=self.cycle, row=self.row, onoff=True))
         self.update_current_values()
+        self.last_answer = time.monotonic()
 
 
 class Commands(Enum):
@@ -616,7 +633,6 @@ class GetMany:
                     break
                 else:
                     queries.append(item)
-            return queries
         else:
             for _ in range(max_queue_size):
                 try:
@@ -625,7 +641,7 @@ class GetMany:
                     break
                 else:
                     queries.append(item)
-            return queries
+        return queries
 
     def get(self, block: bool, timeout: float):
         raise NotImplementedError
@@ -636,7 +652,7 @@ class ManyPriorityQueue(PriorityQueue, GetMany):
     Extended PriorityQueue
     """
 
-    def get_many(self, timout=0.5, max_queue_size=5):
+    def get_many(self, timout=0.5, max_queue_size=6):
         """
         Return as many queries as possible in a list
         Priority is removed from list
@@ -730,17 +746,22 @@ class SerialTxLock:
 
     def rxd_sense_wait(self) -> bool:
         if not GPIO.input(self.rxd_sense):
-            result = GPIO.wait_for_edge(self.rxd_sense, GPIO.RISING, timeout=self.rxd_timeout)
+            result = GPIO.wait_for_edge(
+                self.rxd_sense, GPIO.RISING, timeout=self.rxd_timeout
+            )
             if result is None:
                 log.critical("Timeout bei der Antwort")
                 return False
             else:
                 return True
+        return True
 
     def txd_sense_wait(self) -> None:
         while True:
             if (
-                GPIO.wait_for_edge(self.txd_sense, GPIO.FALLING, timeout=self.txd_timeout)
+                GPIO.wait_for_edge(
+                    self.txd_sense, GPIO.FALLING, timeout=self.txd_timeout
+                )
                 is None
             ):
                 break
@@ -788,37 +809,33 @@ class SerialServer(Thread):
             log.debug(f"Error: {e}")
 
     def read_data(self):
-        data = b"\x00"
-        for _ in range(3):
-            data = self.serial.read(1)
-            if data != b"x\00":
-                break
-        else:
-            return
-
-        rep = FrameParser.from_bytes(data)
-        if not rep.is_zero():
-            try:
-                values = rep.read_reply(self.serial)
-            except (TypeError, ValueError, struct.error, serial.SerialException) as e:
-                log.debug(e)
-            else:
-                self.receiver_queue.put((rep.frame_type, values))
-                self.log_answer(rep)
+        buffer = bytearray(self.serial.read(self.serial.in_waiting).lstrip(b"\x00"))
+        while buffer:
+            rep = FrameParser.from_bytes(buffer.pop(0))
+            if not rep.is_zero():
+                try:
+                    values = rep.read_reply(buffer)
+                except (
+                    TypeError,
+                    ValueError,
+                    struct.error,
+                    serial.SerialException,
+                ) as e:
+                    log.debug(repr(e))
+                else:
+                    self.receiver_queue.put((rep.frame_type, values))
+                    self.log_answer(rep)
 
     def run(self) -> None:
         while True:
             queries = self.sender_queue.get_many()
             if queries:
                 with self.serial_handshake:
-                    # time.sleep(0.1)
-                    # Anfrage senden
                     self.serial.write(b"".join(queries))
-                    self.serial.flush()
+                    # self.serial.flush()
                     for query in queries:
                         self.log_query(query)
 
-                    # Daten nach den Anfragen lesen
                     time.sleep(0.3 + 0.2 * len(queries))
                     for _ in queries:
                         self.read_data()
@@ -986,6 +1003,13 @@ def setup_gpio():
     GPIO.setup(TXD_SENSE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # /Transmit Data Sense
 
 
+def parse_args():
+    parser = ArgumentParser()
+    parser.add_argument("-d", action="store_true", help="Debug Modus")
+    parser.add_argument("-p", action="store_true", help="Test Modus")
+    return parser.parse_args()
+
+
 basicConfig(level=INFO)
 log = getLogger("Server")
 serial_sender_queue = ManyPriorityQueue()
@@ -997,7 +1021,7 @@ QUERIES_LIVE: QueriesType = [
     (query_load(), 60),
     (query_cell_temperature(), 60),
     *[(query_cell_voltage(n), 60) for n in range(4)],
-    (query_error_flags(), 15),
+    (query_error_flags(), 2),
 ]
 
 QUERIES_NORMAL: QueriesType = [
@@ -1011,26 +1035,30 @@ QUERIES_NORMAL: QueriesType = [
 
 
 if __name__ == "__main__":
+    args = parse_args()
     setup_gpio()
-    log.debug("Starte QueryScheduler")
-    query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
+    if args.d:
+        log.setLevel(DEBUG)
+    if not args.p:
+        log.debug("Starte QueryScheduler")
+        query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
 
-    log.debug("Starte seriellen Server")
-    serial_server = SerialServer(
-        port="/dev/serial0",
-        baudrate=1000,
-        parity=serial.PARITY_EVEN,
-        bytesize=serial.EIGHTBITS,
-        stopbits=serial.STOPBITS_ONE,
-        sender_queue=serial_sender_queue,
-        receiver_queue=serial_receiver_queue,
-    )
-    serial_server.start()
+        log.debug("Starte seriellen Server")
+        serial_server = SerialServer(
+            port="/dev/serial0",
+            baudrate=1000,
+            parity=serial.PARITY_EVEN,
+            bytesize=serial.EIGHTBITS,
+            stopbits=serial.STOPBITS_ONE,
+            sender_queue=serial_sender_queue,
+            receiver_queue=serial_receiver_queue,
+        )
+        serial_server.start()
 
-    log.debug("Starte Befehlsempfänger")
-    command_server = CommandLoop(addr="tcp://127.0.0.1:4000")
-    command_server.start()
+        log.debug("Starte Befehlsempfänger")
+        command_server = CommandLoop(addr="tcp://127.0.0.1:4000")
+        command_server.start()
 
-    log.debug("Starte Datenlogger")
-    data_logger = DataReader(serial_receiver_queue, query_scheduler)
-    data_logger.start()
+        log.debug("Starte Datenlogger")
+        data_logger = DataReader(serial_receiver_queue, query_scheduler)
+        data_logger.start()

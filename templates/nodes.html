@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>Übersicht aller Akkus</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+
+<div class="container">
+    {% if nodes %}
+        <table class="table">
+            <tr>
+                <td colspan="3"><p class="btn btn-success btn-block">Übersicht</p></td>
+            </tr>
+            <tr>
+                <td>Gesammtkapazität</td>
+                <td class="text-right"
+                    id="total_capacity">{{ nodes.values() | map(attribute='payload') | sum(attribute='capacity') | int }}</td>
+                <td>Ah</td>
+            </tr>
+            <tr>
+                <td>Gesammtladung</td>
+                <td class="text-right"
+                    id="total_charge">{{ nodes.values() | map(attribute='payload') | sum(attribute='charge') | int }}</td>
+                <td>Ah</td>
+            </tr>
+            <tr>
+                <td>Gesammtspannung</td>
+                <td class="text-right" id="total_voltage">{{ total_voltage | round(1) }}</td>
+                <td>V</td>
+            </tr>
+            <tr>
+                <td>Gesammtstrom</td>
+                <td class="text-right"
+                    id="total_current">{{ nodes.values() | map(attribute='payload') | sum(attribute='current') | round(1) }}</td>
+                <td>A</td>
+            </tr>
+            <tr>
+                <td colspan="3"></td>
+            </tr>
+            {%- for addr, data in nodes.items() %}
+                {% set node_loop = loop %}
+                <tr>
+                    <td colspan="3">
+                        <p class="btn btn-success btn-block" type="button"
+                           onclick="location.href='{{ 'http://' + addr }}'">
+                            [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Kapazität</td>
+                    <td class="text-right"
+                        id="{{ 'capacity_{}'.format(loop.index) }}">{{ data['payload']['capacity'] }}</td>
+                    <td>Ah</td>
+                </tr>
+                <tr>
+                </tr>
+                <tr>
+                    <td>Spannung</td>
+                    <td class="text-right"
+                        id="{{ 'voltage_{}'.format(loop.index) }}">{{ data['payload']['voltage'] | round(1) }}</td>
+                    <td>V</td>
+                </tr>
+                <tr>
+                    <td>Strom</td>
+                    <td class="text-right"
+                        id="{{ 'current_{}'.format(loop.index) }}">{{ data['payload']['current'] | round(1) }}</td>
+                    <td>A</td>
+                </tr>
+                <tr>
+                    <td>Temperatur</td>
+                    <td class="text-right"
+                        id="{{ 'temperature_{}'.format(loop.index) }}">{{ data['payload']['temperature'] | round(1) }}</td>
+                    <td>°C</td>
+                </tr>
+                <tr id="tr_upper_cell_voltage_{{ loop.index }}">
+                    <td>Obere Zellspannung</td>
+                    <td class="text-right" id="upper_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages']| max | round(2) }}</td>
+                    <td>V</td>
+                </tr>
+                <tr id="tr_lower_cell_voltage_{{ loop.index }}">
+                    <td>Untere Zellspannung</td>
+                    <td class="text-right" id="lower_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages'] | min | round(2) }}</td>
+                    <td>V</td>
+                </tr>
+                </tr>
+                {%- for cell_voltage in data['payload']['cell_voltages'] %}
+                    <tr>
+                        <td>Zelle {{ loop.index }}</td>
+                        <td class="text-right"
+                            id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">{{ cell_voltage|round(2) }}</td>
+                        <td>V</td>
+                    </tr>
+                {%- endfor %}
+                <tr>
+                    <td>Fehler</td>
+                    <td colspan="1" class="text-right"
+                        id="{{ 'error_{}'.format(node_loop.index) }}">{{ data['payload']['error_msg'] }}</td>
+                    <td></td>
+                </tr>
+            {% endfor -%}
+            <tr>
+                <td colspan="3">
+                    <p class="btn btn-success btn-block" type="button"
+                       onclick="location.href='{{ '/' }}'">Zurück
+                    </p>
+                </td>
+            </tr>
+        </table>
+    {% else %}
+        <h4 class="bg-warning"></h4>
+    {% endif %}
+</div>
+
+<script type="application/javascript">
+    let first_run = true;
+    let lower_upper_voltage = false;
+
+    function getter(nodes, node) {
+        return function (key) {
+            return nodes[node]["payload"][key]
+        }
+    }
+
+    function update() {
+        fetch('/api/nodes').then(function (response) {
+            return response.json();
+        }).then(
+            function (nodes) {
+                let i = 1;
+                let capacity;
+                let charge;
+                let voltage;
+                let current;
+                let temperature;
+                let cell_voltages;
+                let error_msg;
+                let id;
+                let total_current = 0.0;
+                let total_capacity = 0;
+                let total_charge = 0.0;
+                let total_voltage = 0.0;
+                let g;
+                for (const node in nodes) {
+                    g = getter(nodes, node);
+                    capacity = g("capacity");
+                    charge = g("charge");
+                    voltage = g("voltage");
+                    current = g("current");
+                    temperature = g("temperature");
+                    cell_voltages = g("cell_voltages");
+                    error_msg = g("error_msg");
+
+                    total_capacity += capacity;
+                    total_charge += charge;
+                    total_voltage += voltage;
+                    total_current += current;
+
+                    document.getElementById("capacity_" + i).innerText = capacity.toFixed(0);
+                    document.getElementById("voltage_" + i).innerText = voltage.toFixed(2);
+                    document.getElementById("current_" + i).innerText = current.toFixed(1);
+                    document.getElementById("temperature_" + i).innerText = temperature.toFixed(1);
+                    document.getElementById("error_" + i).innerText = error_msg;
+                    document.getElementById("upper_cell_voltage_" + i).innerText = Math.max(... cell_voltages).toFixed(2);
+                    document.getElementById("lower_cell_voltage_" + i).innerText = Math.min(... cell_voltages).toFixed(2);
+
+                    let cell_idx = 1;
+                    for (const cell in cell_voltages) {
+                        voltage = cell_voltages[cell];
+                        id = "cell_voltage_" + i + "_" + cell_idx;
+                        document.getElementById(id).innerText = voltage.toFixed(2);
+                        cell_idx++;
+                    }
+                    i++;
+                }
+                let count = i - 1;
+                document.getElementById("total_capacity").innerText = total_capacity.toFixed(0);
+                document.getElementById("total_charge").innerText = total_charge.toFixed(0);
+                document.getElementById("total_voltage").innerText = (total_voltage / count).toFixed(1);
+                document.getElementById("total_current").innerText = total_current.toFixed(1);
+            }
+        )
+    }
+
+    function auto_update() {
+        setInterval(function () {
+            update();
+        }, 1000)
+    }
+
+    auto_update();
+
+</script>
+
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+<!-- <script src="/vendor/sweetalert/sweetalert.min.js"></script> -->
+
+</body>
+</html>

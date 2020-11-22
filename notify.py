@@ -24,9 +24,9 @@ tpl = jinja2.Template(html_tpl)
 
 def send_report(topic):
     try:
-        _send_report(topic)
+        return _send_report(topic)
     except:
-        pass
+        return {"success": False, "status": 0}
 
 
 def _send_report(topic):
@@ -49,9 +49,11 @@ def _send_report(topic):
     )
     r = message.send(to=[settings['email_to']], smtp=smtp)
     if r.status_code == 250:
-        return print('Success')
+        # print('Success')
+        return {"success": True, "status": 250}
     else:
-        return print('Error:', r.status_code)
+        # print('Error:', r.status_code)
+        return {"success": False, "status": r.status_code}
 
 
 if __name__ == '__main__':

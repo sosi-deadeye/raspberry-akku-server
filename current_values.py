@@ -8,21 +8,21 @@ class MemoryMappedStruct:
     def __init__(
         self,
         file: Union[Path, str],
-        struct: struct.Struct,
+        file_struct: struct.Struct,
         *,
         reader: bool = False,
         writer: bool = False,
         create: bool = False,
     ):
         self.file = Path(file)
-        self.mm_st = struct
+        self.mm_st = file_struct
         self.create_file = create
         self.flush_mm = writer
         if reader and not writer:
             self.mm = self._get_mmap_reader()
         elif not reader and writer:
             self.mm = self._get_mmap_writer()
-        elif not reader and not writer:
+        elif not reader:
             raise ValueError("Must be a reader or a writer.")
         else:
             raise ValueError("Can't be a reader and writer.")
@@ -47,9 +47,8 @@ class MemoryMappedStruct:
             )
 
     def close(self) -> None:
-        if not self.mm.closed:
-            if self.flush_mm:
-                self.mm.flush()
+        if not self.mm.closed and self.flush_mm:
+            self.mm.flush()
         self.mm.close()
 
     def get_values(self) -> Tuple[Any]:

@@ -1,9 +1,11 @@
-
+wheel
+python-multipart
+netifaces
 emails
 fastapi
+requests
 gpiozero
 jinja2
-matplotlib
 netifaces
 pendulum
 pydantic

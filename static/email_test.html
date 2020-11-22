@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>Akku - E-Mail [Test]</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+<h1 class="text-center text-success">E-Mail Test</h1>
+
+<div class="container">
+    <button onclick="test_alarm()" class="btn btn-danger btn-block">Versende E-Mail</button>
+    <a href="/" class="btn btn-warning btn-block">Zurück</a>
+</div>
+
+<script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
+<script src="/vendor/popper/popper.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="/vendor/sweetalert/sweetalert.min.js"></script>
+</body>
+<script type="text/javascript">
+    function test_alarm() {
+        fetch("/api/notify/Test-Alarm").then(response => response.json()).then(data => {
+            if (data["success"] === true) {
+                swal("Erfolgreich", "Die E-Mail ist erfolgreich versendet worden.", "success");
+            } else {
+                swal("Fehler", "Beim Versenden der E-Mail ist ein Fehler aufgetreten.", "error");
+            }
+        }).catch((error) => {
+            console.error('Error:', error);
+        });
+    }
+</script>
+</html>
