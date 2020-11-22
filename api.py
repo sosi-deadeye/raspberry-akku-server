@@ -17,7 +17,6 @@ from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
-from gpiozero import Buzzer
 from pydantic import BaseModel, Field
 from starlette.requests import Request
 from starlette.responses import StreamingResponse, RedirectResponse
@@ -46,7 +45,7 @@ templates = Jinja2Templates(directory="templates")
 
 app = FastAPI(
     title="LiFePo4-Akku",
-    version="3.5.0beta1",
+    version="4.0",
     description="Rest API für des LiFePo4-Akkus",
     docs_url=None,
     redoc_url=None,
