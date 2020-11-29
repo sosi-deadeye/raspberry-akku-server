@@ -27,7 +27,8 @@ class Nodes:
                 del self._nodes[node_addr]
 
     def add(self, addr, payload):
-        payload["last_seen"] = time.monotonic()
+        if not payload.get("last_seen"):
+            payload["last_seen"] = time.monotonic()
         self._nodes[addr] = payload
 
     @property
@@ -94,6 +95,10 @@ class ServiceAnnouncer(Thread):
         self.port = port
         self.sender = None
         self.create_socket()
+        self.settings = {}
+
+    def update_settings(self, settings: dict):
+        self.settings.update(settings)
 
     def create_socket(self):
         self.sender = socket(AF_INET, SOCK_DGRAM)
@@ -103,6 +108,7 @@ class ServiceAnnouncer(Thread):
         data = {"hostname": self.hostname}
         while True:
             data.update({"payload": current_values.get_values()})
+            data.update({"settings": self.settings})
             data["payload"]["error_msg"] = errors.get_short(data["payload"]["error"])
             data["payload"]["error_msg_long"] = errors.get_msg(data["payload"]["error"])
             raw = pickle.dumps(data)
@@ -127,6 +133,9 @@ class NodeServer:
     def start(self) -> None:
         self.sa.start()
         self.nl.start()
+
+    def update_settings(self, settings: dict):
+        self.sa.settings.update(settings)
 
     @property
     def nodes(self) -> dict:

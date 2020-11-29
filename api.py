@@ -11,7 +11,8 @@ from typing import List, Optional
 
 import zmq
 import requests
-from fastapi import FastAPI, Form
+from fastapi import Depends, FastAPI, Form, status, HTTPException
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
@@ -34,6 +35,7 @@ import wpa_passphrase
 import nodes
 import setapname
 import update
+import dev_password
 
 
 TZ_FILE = Path("/etc/timezone")
@@ -42,6 +44,7 @@ DEVELOPER_MODE = False
 session = database.Session()
 global_hostname = setapname.get_hostname()
 templates = Jinja2Templates(directory="templates")
+dev_settings_file = Path("/media/data/settings.json")
 
 app = FastAPI(
     title="LiFePo4-Akku",
@@ -50,6 +53,15 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
 )
+
+
+security = HTTPBasic()
+
+
+def update_settings(new_settings: dict):
+    settings.update(new_settings)
+    dev_settings_file.write_text(json.dumps(settings))
+    node_server.update_settings(settings)
 
 
 class Hotspots(BaseModel):
@@ -117,6 +129,42 @@ async def developer_access():
         DEVELOPER_MODE = True
         call(["mount", "-o", "remount,rw", "/"])
     return RedirectResponse("/")
+
+
+UnauthorizedException = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Zugriff nur für Hersteller",
+    headers={"WWW-Authenticate": "Basic"},
+)
+
+
+@app.get("/api/dev-settings")
+async def dev_settings(
+    request: Request,
+    credentials: HTTPBasicCredentials = Depends(security),
+):
+    if not dev_password.check_password(credentials.password):
+        raise UnauthorizedException
+    return templates.TemplateResponse(
+        "dev-settings.html",
+        {"request": request, "without_charge": settings["without_charge"]},
+    )
+
+
+@app.post("/api/dev-settings")
+def dev_settings_post(
+    request: Request,
+    credentials: HTTPBasicCredentials = Depends(security),
+    without_charge: str = Form(""),
+):
+    if not dev_password.check_password(credentials.password):
+        raise UnauthorizedException
+    settings["without_charge"] = bool(without_charge.strip())
+    update_settings(settings)
+    return templates.TemplateResponse(
+        "dev-settings.html",
+        {"request": request, "without_charge": settings["without_charge"]},
+    )
 
 
 @app.get("/api/statistics")
@@ -200,14 +248,24 @@ async def graph(request: Request):
     async with graph_busy:
         cycle = await loop.run_in_executor(executor, database.get_cycle, session)
     return templates.TemplateResponse(
-        "statistik.html", {"request": request, "cycle": cycle, "history": 2,},
+        "statistik.html",
+        {
+            "request": request,
+            "cycle": cycle,
+            "history": 2,
+        },
     )
 
 
 @app.post("/graph")
 async def graph(request: Request, cycle: int = Form(...), history: float = Form(...)):
     return templates.TemplateResponse(
-        "statistik.html", {"request": request, "cycle": cycle, "history": history,},
+        "statistik.html",
+        {
+            "request": request,
+            "cycle": cycle,
+            "history": history,
+        },
     )
 
 
@@ -287,7 +345,11 @@ async def set_ap_password(request: Request, password: str = Form(...)):
         success = "Das Passwort ist erfolgreich gesetzt worden"
     return templates.TemplateResponse(
         "ap-password.html",
-        {"request": request, "password": password, "success": success,},
+        {
+            "request": request,
+            "password": password,
+            "success": success,
+        },
     )
 
 
@@ -303,14 +365,16 @@ async def reset_hostname(request: Request):
     setapname.set_all(hostname)
     global_hostname = hostname
     return templates.TemplateResponse(
-        "hostname_set.html", {"request": request, "hostname": global_hostname},
+        "hostname_set.html",
+        {"request": request, "hostname": global_hostname},
     )
 
 
 @app.get("/api/hostname")
 async def get_hostname(request: Request):
     return templates.TemplateResponse(
-        "hostname_get.html", {"request": request, "hostname": global_hostname},
+        "hostname_get.html",
+        {"request": request, "hostname": global_hostname},
     )
 
 
@@ -322,7 +386,8 @@ async def set_hostname(request: Request, hostname: str = Form(...)):
     global_hostname = hostname
     Path("/media/data/custom_hostname").touch()
     return templates.TemplateResponse(
-        "hostname_set.html", {"request": request, "hostname": global_hostname},
+        "hostname_set.html",
+        {"request": request, "hostname": global_hostname},
     )
 
 
@@ -411,7 +476,13 @@ async def get_email(request: Request):
             "email_smtp_port": 0,
             "email_smtp_ssl": False,
         }
-    return templates.TemplateResponse("email.html", {"request": request, **settings,})
+    return templates.TemplateResponse(
+        "email.html",
+        {
+            "request": request,
+            **settings,
+        },
+    )
 
 
 @app.post("/api/email")
@@ -595,5 +666,11 @@ if __name__ in ("__main__", "api"):
     graph_busy = asyncio.Semaphore()
     executor = ThreadPoolExecutor(max_workers=2)
     node_server = nodes.NodeServer()
+    try:
+        settings = json.loads(dev_settings_file.read_text())
+    except (FileNotFoundError, ValueError):
+        settings = {"without_charge": False}
+        dev_settings_file.write_text(json.dumps(settings))
+    update_settings(settings)
     node_server.start()
     loop = asyncio.get_event_loop()

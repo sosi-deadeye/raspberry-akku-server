@@ -16,12 +16,12 @@
                 <td>Kapazität</td>
                 <td id="capacity" class="text-right">#</td>
             </tr>
-            <tr>
-                <td>Ladung abs.</td>
+            <tr id="tr_charge_abs">
+                <td>Ladung</td>
                 <td id="charge" class="text-right">#</td>
             </tr>
-            <tr>
-                <td>Ladung rel.</td>
+            <tr id="tr_charge_rel">
+                <td>Ladung</td>
                 <td id="charge_rel" class="text-right">#</td>
             </tr>
             <tr>
@@ -133,19 +133,33 @@
             let cell_id = "";
             let element;
             let tr_id;
+            let settings = {};
+            let tr_charge_abs;
+            let tr_charge_rel;
             for (ip in nodes) {
                 payload = nodes[ip]["payload"];
                 total_current += payload["current"];
                 total_capacity += payload["capacity"];
                 total_charge += payload["charge"];
                 if (nodes[ip]["self"]) {
+                    settings = nodes[ip]["settings"];
                     voltage = payload["voltage"];
                     cell_voltages = payload["cell_voltages"];
+                    tr_charge_abs = document.getElementById("tr_charge_abs");
+                    tr_charge_rel = document.getElementById("tr_charge_rel");
+                    if (settings["without_charge"]) {
+                        if (tr_charge_abs) {
+                            tr_charge_abs.remove();
+                        }
+                        if (tr_charge_rel) {
+                            tr_charge_rel.remove();
+                        }
+                    }
                     document.getElementById('hostname').innerText = nodes[ip]["hostname"];
                     document.getElementById('voltage').innerText = voltage.toFixed(2) + " V";
                     document.getElementById('temperature').innerText = payload["temperature"].toFixed(1) + " °C";
                     document.getElementById('error').innerText = payload["error_msg"];
-                    
+
                     if (first_run) {
                         first_run = false;
                         if (voltage > 15) {
@@ -177,15 +191,26 @@
                     }
                 }
                 document.getElementById('capacity').innerText = total_capacity.toFixed(0) + " Ah";
-                document.getElementById('charge').innerText = total_charge.toFixed(0) + " Ah";
-                document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1) + " %";
+                if (tr_charge_abs) {
+                    document.getElementById('charge').innerText = total_charge.toFixed(0) + " Ah";
+                }
+                if (tr_charge_rel) {
+                    document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1) + " %";
+                }
                 document.getElementById('current').innerText = total_current.toFixed(1) + " A";
                 document.getElementById('power').innerText = (voltage * total_current).toFixed(0) + " W";
             }
         }).catch(error => {
             document.getElementById('capacity').innerText = "#";
-            document.getElementById('charge').innerText = "#";
-            document.getElementById('charge_rel').innerText = "#";
+            let charge_abs;
+            charge_abs = document.getElementById('charge');
+            if (charge_abs) {
+                charge_abs.innerText = "#";
+            }
+            let charge_rel = document.getElementById('charge_rel');
+            if (charge_rel) {
+                charge_rel.innerText = "#";
+            }
             document.getElementById('voltage').innerText = "#";
             document.getElementById('current').innerText = "#";
             document.getElementById('power').innerText = "#";
@@ -193,7 +218,7 @@
             document.getElementById('error').innerText = "#";
 
             let row;
-            for (let x = 0; x < 4; x++){
+            for (let x = 0; x < 4; x++) {
                 row = document.getElementById('cell' + x);
                 if (row) {
                     row.innerText = "#";
