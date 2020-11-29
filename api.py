@@ -147,7 +147,12 @@ async def dev_settings(
         raise UnauthorizedException
     return templates.TemplateResponse(
         "dev-settings.html",
-        {"request": request, "without_charge": settings["without_charge"]},
+        {
+            "request": request,
+            "without_charge": settings["without_charge"],
+            "branches": update.branches(),
+            "current_branch": update.current_branch(),
+        },
     )
 
 
@@ -163,7 +168,12 @@ def dev_settings_post(
     update_settings(settings)
     return templates.TemplateResponse(
         "dev-settings.html",
-        {"request": request, "without_charge": settings["without_charge"]},
+        {
+            "request": request,
+            "without_charge": settings["without_charge"],
+            "branches": update.branches(),
+            "current_branch": update.current_branch(),
+        },
     )
 
 

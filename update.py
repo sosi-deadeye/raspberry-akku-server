@@ -18,6 +18,30 @@ def get_last_commit():
     return stdout
 
 
+def fetch():
+    run(["git", "fetch", "-p", "-P", "--all"], stdout=DEVNULL)
+
+
+def branches():
+    cmd = ["git", "branch", "--remote", "-l"]
+    stdout = check_output(cmd, encoding="utf8")
+    return [line.strip().rpartition("/")[2] for line in stdout.splitlines()][1:]
+
+
+def switch(branch):
+    repository = "https://github.com/sosi-deadeye/raspberry-akku-server.git"
+    call(["git", "pull", repository, branch, "--rebase"])
+    call(["git", "checkout", branch])
+
+
+def current_branch():
+    for branch in map(str.strip, check_output(["git", "branch"], encoding="utf8").splitlines()):
+        if branch.startswith("*"):
+            return branch.replace("*", "").strip()
+    else:
+        return ""
+
+
 def _restart():
     cmd = ["systemctl", "restart", "server", "api"]
     Popen(cmd)

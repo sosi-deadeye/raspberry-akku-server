@@ -21,6 +21,26 @@
 
             <br/>
 
+            <select class="form-control" id="set-branch" name="set-branch">
+                {% if current_branch == 'master' %}
+                    <option value="master" checked>master</option>
+                {% else %}
+                    <option value="master">master</option>
+                {% endif %}
+                {% for branch in branches %}
+                    {% if current_branch == branch %}
+                        <option value="{{ branch }}" checked>{{ branch }}</option>
+                    {% elif branch == 'master' %}
+                        {{ continue }}
+                    {% else %}
+                        <option value="{{ branch }}" checked>{{ branch }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <label class="select-label" , for="set-branch">Aktueller Branch</label>
+
+            <br/>
+
             <button type="submit" class="btn btn-primary">Speichern</button>
             <br/><br/>
             <div class="text-warning">
