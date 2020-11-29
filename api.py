@@ -116,6 +116,13 @@ class Ap(BaseModel):
     password: str
 
 
+UnauthorizedException = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Zugriff nur für Hersteller",
+    headers={"WWW-Authenticate": "Basic"},
+)
+
+
 @app.get("/api/developer")
 async def developer_access():
     """
@@ -129,13 +136,6 @@ async def developer_access():
         DEVELOPER_MODE = True
         call(["mount", "-o", "remount,rw", "/"])
     return RedirectResponse("/")
-
-
-UnauthorizedException = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Zugriff nur für Hersteller",
-    headers={"WWW-Authenticate": "Basic"},
-)
 
 
 @app.get("/api/dev-settings")
@@ -173,6 +173,7 @@ def dev_settings_post(
             update.switch(set_branch)
             update.pull()
             import compileall
+
             compileall.compile_dir("/home/server/akku")
 
     return templates.TemplateResponse(
@@ -650,6 +651,7 @@ async def get_nodes(request: Request):
             "request": request,
             "nodes": node_server.nodes_sorted,
             "total_voltage": current_values.get_values().get("voltage"),
+            "settings": settings,
         },
     )
 

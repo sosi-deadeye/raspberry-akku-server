@@ -20,12 +20,14 @@
                     id="total_capacity">{{ nodes.values() | map(attribute='payload') | sum(attribute='capacity') | int }}</td>
                 <td>Ah</td>
             </tr>
-            <tr>
-                <td>Gesammtladung</td>
-                <td class="text-right"
-                    id="total_charge">{{ nodes.values() | map(attribute='payload') | sum(attribute='charge') | int }}</td>
-                <td>Ah</td>
-            </tr>
+            {% if not settings['without_charge'] %}
+                <tr>
+                    <td>Gesammtladung</td>
+                    <td class="text-right"
+                        id="total_charge">{{ nodes.values() | map(attribute='payload') | sum(attribute='charge') | int }}</td>
+                    <td>Ah</td>
+                </tr>
+            {% endif %}
             <tr>
                 <td>Gesammtspannung</td>
                 <td class="text-right" id="total_voltage">{{ total_voltage | round(1) }}</td>
@@ -76,25 +78,30 @@
                         id="{{ 'temperature_{}'.format(loop.index) }}">{{ data['payload']['temperature'] | round(1) }}</td>
                     <td>°C</td>
                 </tr>
-                <tr id="tr_upper_cell_voltage_{{ loop.index }}">
-                    <td>Obere Zellspannung</td>
-                    <td class="text-right" id="upper_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages']| max | round(2) }}</td>
-                    <td>V</td>
-                </tr>
-                <tr id="tr_lower_cell_voltage_{{ loop.index }}">
-                    <td>Untere Zellspannung</td>
-                    <td class="text-right" id="lower_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages'] | min | round(2) }}</td>
-                    <td>V</td>
-                </tr>
-                </tr>
-                {%- for cell_voltage in data['payload']['cell_voltages'] %}
-                    <tr>
-                        <td>Zelle {{ loop.index }}</td>
+                {% if total_voltage > 16 %}
+                    <tr id="tr_upper_cell_voltage_{{ loop.index }}">
+                        <td>Obere Zellspannung</td>
                         <td class="text-right"
-                            id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">{{ cell_voltage|round(2) }}</td>
+                            id="upper_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages']| max | round(2) }}</td>
                         <td>V</td>
                     </tr>
-                {%- endfor %}
+                    <tr id="tr_lower_cell_voltage_{{ loop.index }}">
+                        <td>Untere Zellspannung</td>
+                        <td class="text-right"
+                            id="lower_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages'] | min | round(2) }}</td>
+                        <td>V</td>
+                    </tr>
+                {% else %}
+                    </tr>
+                    {%- for cell_voltage in data['payload']['cell_voltages'] %}
+                        <tr>
+                            <td>Zelle {{ loop.index }}</td>
+                            <td class="text-right"
+                                id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">{{ cell_voltage|round(2) }}</td>
+                            <td>V</td>
+                        </tr>
+                    {%- endfor %}
+                {% endif %}
                 <tr>
                     <td>Fehler</td>
                     <td colspan="1" class="text-right"
@@ -144,6 +151,7 @@
                 let total_charge = 0.0;
                 let total_voltage = 0.0;
                 let g;
+                let td_total_charge;
                 for (const node in nodes) {
                     g = getter(nodes, node);
                     capacity = g("capacity");
@@ -164,21 +172,37 @@
                     document.getElementById("current_" + i).innerText = current.toFixed(1);
                     document.getElementById("temperature_" + i).innerText = temperature.toFixed(1);
                     document.getElementById("error_" + i).innerText = error_msg;
-                    document.getElementById("upper_cell_voltage_" + i).innerText = Math.max(... cell_voltages).toFixed(2);
-                    document.getElementById("lower_cell_voltage_" + i).innerText = Math.min(... cell_voltages).toFixed(2);
+
+                    let upper_cell_voltage;
+                    let lower_cell_voltage;
+                    upper_cell_voltage = document.getElementById("upper_cell_voltage_" + i);
+                    lower_cell_voltage = document.getElementById("lower_cell_voltage_" + i);
+                    if (upper_cell_voltage) {
+                        upper_cell_voltage.innerText = Math.max(...cell_voltages).toFixed(2);
+                    }
+                    if (lower_cell_voltage) {
+                        lower_cell_voltage.innerText = Math.min(...cell_voltages).toFixed(2);
+                    }
 
                     let cell_idx = 1;
+                    let td_cell;
                     for (const cell in cell_voltages) {
                         voltage = cell_voltages[cell];
                         id = "cell_voltage_" + i + "_" + cell_idx;
-                        document.getElementById(id).innerText = voltage.toFixed(2);
+                        td_cell = document.getElementById(id);
+                        if (td_cell) {
+                            td_cell.innerText = voltage.toFixed(2);
+                        }
                         cell_idx++;
                     }
                     i++;
                 }
                 let count = i - 1;
                 document.getElementById("total_capacity").innerText = total_capacity.toFixed(0);
-                document.getElementById("total_charge").innerText = total_charge.toFixed(0);
+                td_total_charge = document.getElementById("total_charge");
+                if (td_total_charge) {
+                    td_total_charge.innerText = total_charge.toFixed(0);
+                }
                 document.getElementById("total_voltage").innerText = (total_voltage / count).toFixed(1);
                 document.getElementById("total_current").innerText = total_current.toFixed(1);
             }
