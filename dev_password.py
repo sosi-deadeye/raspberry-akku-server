@@ -33,6 +33,12 @@ def get_set_salt() -> bytes:
         return gen_salt()
 
 
+def set_password(password: str) -> None:
+    # todo internal state -> make a class?
+    global PASSWORD
+    PASSWORD = gen_password(password)
+
+
 def get_set_password(password: str) -> bytes:
     if PASS_FILE.exists():
         return PASS_FILE.read_bytes()

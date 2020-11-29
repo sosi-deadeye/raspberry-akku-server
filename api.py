@@ -162,11 +162,14 @@ def dev_settings_post(
     credentials: HTTPBasicCredentials = Depends(security),
     without_charge: str = Form(""),
     set_branch: str = Form(""),
+    manufacturer_password: str = Form(""),
 ):
     if not dev_password.check_password(credentials.password):
         raise UnauthorizedException
     settings["without_charge"] = bool(without_charge.strip())
     update_settings(settings)
+    if manufacturer_password:
+        dev_password.set_password(manufacturer_password)
     current_branch = update.current_branch()
     if set_branch and set_branch != current_branch:
         with read_write_mode():

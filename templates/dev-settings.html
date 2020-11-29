@@ -20,6 +20,12 @@
 
             <br/>
 
+            <div class="text-info">
+                Verhindert die Anzeige der Ladung auf der Hauptseite und den benachbarten Modulen.
+            </div>
+
+            <br/>
+
             <select class="form-control" id="set_branch" name="set_branch">
                 {% if current_branch == 'master' %}
                     <option value="master" selected="selected">master</option>
@@ -37,6 +43,25 @@
                 {% endfor %}
             </select>
             <label class="select-label" for="set_branch">Aktueller Branch</label>
+
+            <br/>
+            <div class="text-info">
+                Der stabile Zweig ist der <b>master</b>.
+                Die anderen Branches dienen zu Testzwecken.
+                So können zukünftig Änderungen ausprobiert werden.
+            </div>
+
+            <br/>
+
+            <input type="text" class="form-control" id="manufacturer_password" name="manufacturer_password"
+                   placeholder="Herstellerpasswort">
+            <label for="manufacturer_password">Herstellerpasswort setzen</label>
+            <div class="text-info">
+                Das Herstellerpasswort wird nur gesetzt, wenn eins eingegeben worden ist.
+                Das Passwort wird im Klartext angezeigt und deswegen auch im Browser gespeichert.
+                Das Passwort wird kryptografisch sicher auf der Daten-Partition abgespeichert.
+                Es kann nicht wieder hergestellt werden.
+            </div>
 
             <br/>
 
