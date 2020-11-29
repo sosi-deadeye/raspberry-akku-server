@@ -252,6 +252,8 @@
 </script>
 
 <script type="text/javascript">
+    let on_timeout;
+
     function cancel_timer(eve) {
         if (typeof on_timeout !== 'undefined') {
             clearTimeout(on_timeout);
@@ -260,7 +262,7 @@
 
     function register_event(endpoint, elementid, msg_ok_title, msg_ok_text, msg_error, timeout) {
         function do_action(event) {
-            const on_timeout = setTimeout(function () {
+            on_timeout = setTimeout(function () {
                 fetch(endpoint, {"method": "POST"}).then(function (response) {
                     return response.json();
                 }).then(function (myJson) {
