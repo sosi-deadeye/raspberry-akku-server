@@ -161,18 +161,27 @@ def dev_settings_post(
     request: Request,
     credentials: HTTPBasicCredentials = Depends(security),
     without_charge: str = Form(""),
+    set_branch: str = Form(""),
 ):
     if not dev_password.check_password(credentials.password):
         raise UnauthorizedException
     settings["without_charge"] = bool(without_charge.strip())
     update_settings(settings)
+    current_branch = update.current_branch()
+    if set_branch and set_branch != current_branch:
+        with read_write_mode():
+            update.switch(set_branch)
+            update.pull()
+            import compileall
+            compileall.compile_dir("/home/server/akku")
+
     return templates.TemplateResponse(
         "dev-settings.html",
         {
             "request": request,
             "without_charge": settings["without_charge"],
             "branches": update.branches(),
-            "current_branch": update.current_branch(),
+            "current_branch": current_branch,
         },
     )
 

@@ -3,7 +3,7 @@ from threading import Timer
 
 
 def pull():
-    cmd = ["git", "pull"]
+    cmd = ["git", "pull", "--rebase"]
     cwd = "/home/server/akku"
     return call(cmd, cwd=cwd) == 0
 
@@ -19,7 +19,7 @@ def get_last_commit():
 
 
 def fetch():
-    run(["git", "fetch", "-p", "-P", "--all"], stdout=DEVNULL)
+    call(["git", "fetch", "-p", "-P", "--all"])
 
 
 def branches():
