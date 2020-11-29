@@ -23,17 +23,17 @@
 
             <select class="form-control" id="set-branch" name="set-branch">
                 {% if current_branch == 'master' %}
-                    <option value="master" checked>master</option>
+                    <option value="master" selected="selected">master</option>
                 {% else %}
                     <option value="master">master</option>
                 {% endif %}
                 {% for branch in branches %}
                     {% if current_branch == branch %}
-                        <option value="{{ branch }}" checked>{{ branch }}</option>
+                        <option value="{{ branch }}" selected="selected">{{ branch }}</option>
                     {% elif branch == 'master' %}
                         {{ continue }}
                     {% else %}
-                        <option value="{{ branch }}" checked>{{ branch }}</option>
+                        <option value="{{ branch }}">{{ branch }}</option>
                     {% endif %}
                 {% endfor %}
             </select>
