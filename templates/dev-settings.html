@@ -9,8 +9,7 @@
 <body>
 
 <div class="container">
-    <h1 class="text-center text-success">Einstellungen</h1>
-    <h2 class="text-center text-success">WLAN Passwort</h2>
+    <h1 class="text-center text-success">Herstellerseitige Einstellungen</h1>
     <form class="p-3 mb-2 bg-dark text-white" action="/api/dev-settings" method="post">
         <div class="form-group">
             <div class="form-check">
@@ -21,7 +20,7 @@
 
             <br/>
 
-            <select class="form-control" id="set-branch" name="set-branch">
+            <select class="form-control" id="set_branch" name="set_branch">
                 {% if current_branch == 'master' %}
                     <option value="master" selected="selected">master</option>
                 {% else %}
@@ -37,7 +36,7 @@
                     {% endif %}
                 {% endfor %}
             </select>
-            <label class="select-label" , for="set-branch">Aktueller Branch</label>
+            <label class="select-label" for="set_branch">Aktueller Branch</label>
 
             <br/>
 
