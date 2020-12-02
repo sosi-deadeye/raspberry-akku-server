@@ -11,7 +11,7 @@ from typing import List, Optional
 
 import zmq
 import requests
-from fastapi import Depends, FastAPI, Form, status, HTTPException
+from fastapi import Depends, FastAPI, Form, status, HTTPException, UploadFile, File
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.openapi.docs import (
     get_redoc_html,
@@ -20,8 +20,10 @@ from fastapi.openapi.docs import (
 )
 from pydantic import BaseModel, Field
 from starlette.requests import Request
-from starlette.responses import StreamingResponse, RedirectResponse
+from starlette.responses import StreamingResponse, RedirectResponse, FileResponse
 from starlette.templating import Jinja2Templates
+
+import aiofiles
 
 import current_values
 import database
@@ -39,6 +41,7 @@ import dev_password
 
 
 TZ_FILE = Path("/etc/timezone")
+LOGO = Path("/media/data/logo.png")
 DEVELOPER_MODE = False
 
 session = database.Session()
@@ -123,6 +126,14 @@ UnauthorizedException = HTTPException(
 )
 
 
+@app.get("/api/logo.png")
+async def logo():
+    if LOGO.exists():
+        return FileResponse("/media/data/logo.png", media_type="image/png")
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not installed")
+
+
 @app.get("/api/developer")
 async def developer_access():
     """
@@ -157,27 +168,34 @@ async def dev_settings(
 
 
 @app.post("/api/dev-settings")
-def dev_settings_post(
+async def dev_settings_post(
     request: Request,
     credentials: HTTPBasicCredentials = Depends(security),
     without_charge: str = Form(""),
     set_branch: str = Form(""),
     manufacturer_password: str = Form(""),
+    upload_logo: UploadFile = File(...),
 ):
     if not dev_password.check_password(credentials.password):
         raise UnauthorizedException
+
+    if upload_logo is not None:
+        with LOGO.open("wb") as logo_disk:
+            data = await upload_logo.read()
+            await loop.run_in_executor(executor, logo_disk.write, data)
+
     settings["without_charge"] = bool(without_charge.strip())
     update_settings(settings)
     if manufacturer_password:
-        dev_password.set_password(manufacturer_password)
-    current_branch = update.current_branch()
+        await loop.run_in_executor(executor, dev_password.set_password, manufacturer_password)
+    current_branch = await loop.run_in_executor(executor, update.current_branch)
     if set_branch and set_branch != current_branch:
         with read_write_mode():
-            update.switch(set_branch)
-            update.pull()
+            await loop.run_in_executor(executor, update.switch, set_branch)
+            await loop.run_in_executor(None, update.pull)
             import compileall
 
-            compileall.compile_dir("/home/server/akku")
+            await loop.run_in_executor(executor, compileall.compile_dir, "/home/server/akku")
 
     return templates.TemplateResponse(
         "dev-settings.html",

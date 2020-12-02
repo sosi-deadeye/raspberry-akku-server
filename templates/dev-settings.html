@@ -10,7 +10,7 @@
 
 <div class="container">
     <h1 class="text-center text-success">Herstellerseitige Einstellungen</h1>
-    <form class="p-3 mb-2 bg-dark text-white" action="/api/dev-settings" method="post">
+    <form class="p-3 mb-2 bg-dark text-white" action="/api/dev-settings" method="post" enctype="multipart/form-data">
         <div class="form-group">
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="without_charge" id="without_charge"
@@ -65,11 +65,15 @@
 
             <br/>
 
-            <button type="submit" class="btn btn-primary">Speichern</button>
-            <br/><br/>
-            <div class="text-warning">
+            <div class="custom-file">
+                <input type="file" id="upload_logo" name="upload_logo">
+                <label class="custom-file-label" for="upload_logo">Herstellerlogo hochladen</label>
             </div>
-            <br/>
+
+            <br/><br/>
+
+            <button type="submit" class="btn badge-primary btn-block">Speichern</button>
+            <a href="/api/update" class="btn badge-primary btn-block">Update</a>
             <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
         </div>
     </form>
