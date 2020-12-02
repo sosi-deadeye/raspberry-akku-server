@@ -23,8 +23,6 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse, RedirectResponse, FileResponse
 from starlette.templating import Jinja2Templates
 
-import aiofiles
-
 import current_values
 import database
 import errors
