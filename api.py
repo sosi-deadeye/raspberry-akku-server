@@ -161,6 +161,7 @@ async def dev_settings(
             "without_charge": settings["without_charge"],
             "branches": update.branches(),
             "current_branch": update.current_branch(),
+            "interconnection": settings["interconnection"],
         },
     )
 
@@ -171,6 +172,7 @@ async def dev_settings_post(
     credentials: HTTPBasicCredentials = Depends(security),
     without_charge: str = Form(""),
     set_branch: str = Form(""),
+    interconnection: str = Form(...),
     manufacturer_password: str = Form(""),
     upload_logo: UploadFile = File(...),
 ):
@@ -183,6 +185,7 @@ async def dev_settings_post(
             await loop.run_in_executor(executor, logo_disk.write, data)
 
     settings["without_charge"] = bool(without_charge.strip())
+    settings["interconnection"] = interconnection
     update_settings(settings)
     if manufacturer_password:
         await loop.run_in_executor(executor, dev_password.set_password, manufacturer_password)
@@ -202,6 +205,7 @@ async def dev_settings_post(
             "without_charge": settings["without_charge"],
             "branches": update.branches(),
             "current_branch": current_branch,
+            "interconnection": interconnection,
         },
     )
 
@@ -698,6 +702,7 @@ def _set_time(date_iso: str, time_iso: str, timezone: str):
 
 
 if __name__ in ("__main__", "api"):
+    settings_default = {"without_charge": False, "interconnection": "parallel_connection"}
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
     control = ctx.socket(zmq.PUB)
@@ -708,8 +713,10 @@ if __name__ in ("__main__", "api"):
     node_server = nodes.NodeServer()
     try:
         settings = json.loads(dev_settings_file.read_text())
+        if not all(key in settings for key in settings_default):
+            raise ValueError
     except (FileNotFoundError, ValueError):
-        settings = {"without_charge": False}
+        settings = settings_default.copy()
         dev_settings_file.write_text(json.dumps(settings))
     update_settings(settings)
     node_server.start()

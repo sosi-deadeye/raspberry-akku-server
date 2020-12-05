@@ -26,6 +26,19 @@
 
             <br/>
 
+            <select class="form-control" id="interconnection" name="interconnection">
+                {% if interconnection == 'series_connection' %}
+                    <option value="series_connection" selected="selected">Reihenschaltung</option>
+                    <option value="parallel_connection">Parallelschaltung</option>
+                {% elif interconnection == 'parallel_connection' %}
+                    <option value="series_connection">Reihenschaltung</option>
+                    <option value="parallel_connection" selected="selected">Parallelschaltung</option>
+                {% endif %}
+            </select>
+            <label class="select-label" for="interconnection">Art der Verschaltung</label>
+
+            <br/>
+
             <select class="form-control" id="set_branch" name="set_branch">
                 {% if current_branch == 'master' %}
                     <option value="master" selected="selected">master</option>

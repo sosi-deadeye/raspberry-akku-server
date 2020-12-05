@@ -8,11 +8,64 @@
 </head>
 <body>
 <div class="container">
-    <img src="api/logo.png" alt="" class="img-fluid" />
+    <!-- <img src="api/logo.png" alt="" class="img-fluid" /> -->
     <h2 class="text-center text-success" id="hostname">LiFePo4-Akku</h2>
     <div class="table-responsive">
+        <table id="overview" class="table table-striped table-dark" style="margin-bottom: 0;">
+            <tbody>
+            <tr>
+                <td colspan="2" class="text-center"><strong>Übersicht</strong></td>
+            </tr>
+            <tr>
+                <td>Gesamtkapazität</td>
+                <td id="total_capacity" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Gesamtladung</td>
+                <td id="total_charge" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Gesamtladung</td>
+                <td id="total_charge_rel" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Gesamtleistung</td>
+                <td id="total_power" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Gesamtspannung</td>
+                <td id="total_voltage" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Gesamtstrom</td>
+                <td id="total_current" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Unterste Zellspannung</td>
+                <td id="total_low_cell_voltage" class="text-right">#</td>
+            </tr>
+                <tr>
+                <td>Oberste Zellspannung</td>
+                <td id="total_high_cell_voltage" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Unterste Temperatur</td>
+                <td id="total_low_temperature" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td>Oberste Temperatur</td>
+                <td id="total_high_temperatur" class="text-right">#</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="text-center"></td>
+            </tr>
+        </tbody>
+        </table>
         <table class="table table-striped table-dark" style="margin-bottom: 0;">
             <tbody>
+            <tr>
+                <td colspan="2" class="text-center">Detailübersicht</td>
+            </tr>
             <tr>
                 <td>Kapazität</td>
                 <td id="capacity" class="text-right">#</td>
@@ -120,16 +173,24 @@
     let first_run = true;
     let lower_upper_voltage = false;
 
+    function _sum(a, b) {
+        return a + b;
+    }
+
+    function sum(data) {
+        return data.reduce(_sum, 0);
+    }
+
+    function mean(data) {
+        return data.reduce(_sum, 0) / Object.keys(data).length;
+    }
+
     function update() {
         fetch('/api/nodes').then(function (response) {
             return response.json();
         }).then(function (nodes) {
             let payload;
-            let voltage = 0.0;
-            let total_current = 0.0;
             let ip = "192.168.0.1";
-            let total_capacity = 0;
-            let total_charge = 0;
             let cell_voltages;
             let cell_id = "";
             let element;
@@ -137,17 +198,49 @@
             let settings = {};
             let tr_charge_abs;
             let tr_charge_rel;
+
+            let capacity = 0.0;
+            let charge = 0.0;
+            let voltage = 0.0;
+            let current = 0.0;
+            let temperature = 0.0;
+
+            let capacities = [];
+            let charges = [];
+            let voltages = [];
+            let currents = [];
+            let all_cell_voltages = [];
+            let temperatures = [];
+
+            let node_count = Object.keys(nodes).length;
+
             for (ip in nodes) {
                 payload = nodes[ip]["payload"];
-                total_current += payload["current"];
-                total_capacity += payload["capacity"];
-                total_charge += payload["charge"];
+                capacity = payload["capacity"];
+                charge = payload["charge"];
+                voltage = payload["voltage"];
+                current = payload["current"];
+
+                if (Math.abs(current) < 0.8) {
+                    current = 0.0;
+                }
+
+                cell_voltages = payload["cell_voltages"];
+                temperature = payload["temperature"];
+
+                capacities = capacities.concat(capacity);
+                charges = charges.concat(charge);
+                voltages = voltages.concat(voltage);
+                currents = currents.concat(current);
+                all_cell_voltages = all_cell_voltages.concat(cell_voltages);
+                temperatures = temperatures.concat(temperature);
+
                 if (nodes[ip]["self"]) {
                     settings = nodes[ip]["settings"];
-                    voltage = payload["voltage"];
-                    cell_voltages = payload["cell_voltages"];
+
                     tr_charge_abs = document.getElementById("tr_charge_abs");
                     tr_charge_rel = document.getElementById("tr_charge_rel");
+
                     if (settings["without_charge"]) {
                         if (tr_charge_abs) {
                             tr_charge_abs.remove();
@@ -156,9 +249,10 @@
                             tr_charge_rel.remove();
                         }
                     }
+
                     document.getElementById('hostname').innerText = nodes[ip]["hostname"];
-                    document.getElementById('voltage').innerText = voltage.toFixed(2) + " V";
-                    document.getElementById('temperature').innerText = payload["temperature"].toFixed(1) + " °C";
+                    document.getElementById('voltage').innerText = voltage.toFixed(1) + " V";
+                    document.getElementById('temperature').innerText = temperature.toFixed(1) + " °C";
                     document.getElementById('error').innerText = payload["error_msg"];
 
                     if (first_run) {
@@ -180,6 +274,38 @@
                         }
                     }
 
+                    element = document.getElementById("overview");
+                    if (element) {
+                        if (node_count < 1) {
+                            if (element) {
+                                element.remove();
+                            }
+                        } else {
+                            document.getElementById("total_low_cell_voltage").innerText = Math.min(...all_cell_voltages).toFixed(2) + " V";
+                            document.getElementById("total_high_cell_voltage").innerText = Math.max(...all_cell_voltages).toFixed(2) + " V";
+                            document.getElementById("total_low_temperature").innerText = Math.min(...temperatures).toFixed(1) + " °C";
+                            document.getElementById("total_high_temperatur").innerText = Math.max(...temperatures).toFixed(1) + " °C";
+
+                            if (settings["interconnection"] === "parallel_connection") {
+                                document.getElementById("total_capacity").innerText = sum(capacities).toFixed(0) + " Ah";
+                                document.getElementById("total_charge").innerText = sum(charges).toFixed(0) + " Ah";
+                                document.getElementById("total_charge_rel").innerText = (sum(charges) / sum(capacities) * 100).toFixed(1) + " %";
+                                document.getElementById("total_voltage").innerText = mean(voltages).toFixed(1) + " V";
+                                document.getElementById("total_current").innerText = sum(currents).toFixed(1) + " A";
+                                document.getElementById("total_power").innerText = (mean(voltages) * sum(currents)).toFixed(0) + " W";
+                            } else if (settings["interconnection"] === "series_connection") {
+                                document.getElementById("total_capacity").innerText = mean(capacities).toFixed(0) + " Ah";
+                                document.getElementById("total_charge").innerText = mean(charges).toFixed(0) + " Ah";
+                                document.getElementById("total_charge_rel").innerText = (mean(charges) / mean(capacities) * 100).toFixed(1) + " %";
+                                document.getElementById("total_voltage").innerText = mean(voltages).toFixed(1) + " V";
+                                document.getElementById("total_current").innerText = mean(currents).toFixed(1) + " A";
+                                document.getElementById("total_power").innerText = (sum(voltages) * mean(currents)).toFixed(0) + " W";
+                            } else {
+                                console.log("Unknown case: " + settings["interconnection"]);
+                            }
+                        }
+                    }
+
                     if (!lower_upper_voltage) {
                         for (const cell_idx in cell_voltages) {
                             cell_id = "cell" + cell_idx;
@@ -190,16 +316,17 @@
                         document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2) + " V";
                         document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2) + " V";
                     }
+
+                    document.getElementById('capacity').innerText = capacity.toFixed(0) + " Ah";
+                    if (tr_charge_abs) {
+                        document.getElementById('charge').innerText = charge.toFixed(0) + " Ah";
+                    }
+                    if (tr_charge_rel) {
+                        document.getElementById('charge_rel').innerText = (charge / capacity * 100).toFixed(1) + " %";
+                    }
+                    document.getElementById('current').innerText = current.toFixed(1) + " A";
+                    document.getElementById('power').innerText = (voltage * current).toFixed(0) + " W";
                 }
-                document.getElementById('capacity').innerText = total_capacity.toFixed(0) + " Ah";
-                if (tr_charge_abs) {
-                    document.getElementById('charge').innerText = total_charge.toFixed(0) + " Ah";
-                }
-                if (tr_charge_rel) {
-                    document.getElementById('charge_rel').innerText = (total_charge / total_capacity * 100).toFixed(1) + " %";
-                }
-                document.getElementById('current').innerText = total_current.toFixed(1) + " A";
-                document.getElementById('power').innerText = (voltage * total_current).toFixed(0) + " W";
             }
         }).catch(error => {
             document.getElementById('capacity').innerText = "#";
