@@ -23,11 +23,11 @@
                 <td>Kapazität</td>
                 <td id="total_capacity" class="text-right">#</td>
             </tr>
-            <tr>
+            <tr id="tr_total_charge">
                 <td>Ladung</td>
                 <td id="total_charge" class="text-right">#</td>
             </tr>
-            <tr>
+            <tr id="tr_total_charge_rel">
                 <td>Ladung</td>
                 <td id="total_charge_rel" class="text-right">#</td>
             </tr>
@@ -201,6 +201,8 @@
             let settings = {};
             let tr_charge_abs;
             let tr_charge_rel;
+            let tr_total_charge;
+            let tr_total_charge_rel;
 
             let capacity = 0.0;
             let charge = 0.0;
@@ -243,22 +245,29 @@
                 if (nodes[ip]["self"]) {
                     settings = nodes[ip]["settings"];
 
-                    if (document.getElementById("data-table")) {
-                        tr_charge_abs = document.getElementById("tr_charge_abs");
-                        tr_charge_rel = document.getElementById("tr_charge_rel");
+                    tr_charge_abs = document.getElementById("tr_charge_abs");
+                    tr_charge_rel = document.getElementById("tr_charge_rel");
+                    tr_total_charge = document.getElementById("tr_total_charge");
+                    tr_total_charge_rel = document.getElementById("tr_total_charge_rel");
 
-                        if (settings["without_charge"]) {
-                            if (tr_charge_abs) {
-                                tr_charge_abs.remove();
-                            }
-                            if (tr_charge_rel) {
-                                tr_charge_rel.remove();
-                            }
+                    if (settings["without_charge"]) {
+                        if (tr_charge_abs) {
+                            tr_charge_abs.remove();
+                        }
+                        if (tr_charge_rel) {
+                            tr_charge_rel.remove();
+                        }
+                        if (tr_total_charge) {
+                            tr_total_charge.remove();
+                        }
+                        if (tr_total_charge_rel) {
+                            tr_total_charge_rel.remove();
                         }
                     }
+
                     if (document.getElementById("data-table")) {
                         document.getElementById('hostname').innerText = nodes[ip]["hostname"];
-                        voltage_element = document.getElementById('voltage').innerText = voltage.toFixed(1) + " V";
+                        document.getElementById('voltage').innerText = voltage.toFixed(1) + " V";
                         document.getElementById('temperature').innerText = temperature.toFixed(1) + " °C";
                         document.getElementById('error').innerText = payload["error_msg"];
 
@@ -290,11 +299,10 @@
                         element.remove();
                     }
                 } else {
-
-                    buttons1 = document.getElementById("buttons1");
-                    buttons2 = document.getElementById("buttons2");
-                    data_table = document.getElementById("data-table");
-                    stats_tr = document.getElementById("stats-tr");
+                    let buttons1 = document.getElementById("buttons1");
+                    let buttons2 = document.getElementById("buttons2");
+                    let data_table = document.getElementById("data-table");
+                    let stats_tr = document.getElementById("stats-tr");
 
                     if (buttons1) {
                         buttons1.remove();
@@ -317,17 +325,27 @@
                     <!-- document.getElementById("total_low_temperature").innerText = Math.min(...temperatures).toFixed(1) + " °C"; -->
                     document.getElementById("all_errors").innerText = all_errors.join("\n");
                     document.getElementById("total_high_temperatur").innerText = Math.max(...temperatures).toFixed(1) + " °C";
+                    let total_charge_td = document.getElementById("total_charge");
+                    let total_charge_rel_td = document.getElementById("total_charge_rel");
                     if (settings["interconnection"] === "parallel_connection") {
                         document.getElementById("total_capacity").innerText = sum(capacities).toFixed(0) + " Ah";
-                        document.getElementById("total_charge").innerText = sum(charges).toFixed(0) + " Ah";
-                        document.getElementById("total_charge_rel").innerText = (sum(charges) / sum(capacities) * 100).toFixed(1) + " %";
+                        if (total_charge_td) {
+                            total_charge_td.innerText = sum(charges).toFixed(0) + " Ah";
+                        }
+                        if (total_charge_rel_td) {
+                            total_charge_rel_td.innerText = (sum(charges) / sum(capacities) * 100).toFixed(1) + " %";
+                        }
                         document.getElementById("total_voltage").innerText = mean(voltages).toFixed(1) + " V";
                         document.getElementById("total_current").innerText = sum(currents).toFixed(1) + " A";
                         document.getElementById("total_power").innerText = (mean(voltages) * sum(currents)).toFixed(0) + " W";
                     } else if (settings["interconnection"] === "series_connection") {
                         document.getElementById("total_capacity").innerText = mean(capacities).toFixed(0) + " Ah";
-                        document.getElementById("total_charge").innerText = mean(charges).toFixed(0) + " Ah";
-                        document.getElementById("total_charge_rel").innerText = (mean(charges) / mean(capacities) * 100).toFixed(1) + " %";
+                        if (total_charge_td) {
+                            document.getElementById("total_charge").innerText = mean(charges).toFixed(0) + " Ah";
+                        }
+                        if (total_charge_rel_td) {
+                            document.getElementById("total_charge_rel").innerText = (mean(charges) / mean(capacities) * 100).toFixed(1) + " %";
+                        }
                         document.getElementById("total_voltage").innerText = sum(voltages).toFixed(1) + " V";
                         document.getElementById("total_current").innerText = mean(currents).toFixed(1) + " A";
                         document.getElementById("total_power").innerText = (sum(voltages) * mean(currents)).toFixed(0) + " W";
@@ -357,9 +375,11 @@
                 document.getElementById('power').innerText = (voltage * current).toFixed(0) + " W";
             }
         }).catch(error => {
-            document.getElementById('capacity').innerText = "#";
-            let charge_abs;
-            charge_abs = document.getElementById('charge');
+            let capacity_element = document.getElementById('capacity');
+            if (capacity_element) {
+                capacity_element.innerText = "#"
+            }
+            let charge_abs = document.getElementById('charge');
             if (charge_abs) {
                 charge_abs.innerText = "#";
             }
@@ -367,11 +387,26 @@
             if (charge_rel) {
                 charge_rel.innerText = "#";
             }
-            document.getElementById('voltage').innerText = "#";
-            document.getElementById('current').innerText = "#";
-            document.getElementById('power').innerText = "#";
-            document.getElementById('temperature').innerText = "#";
-            document.getElementById('error').innerText = "#";
+            let voltage_element = document.getElementById("voltage");
+            if (voltage_element) {
+                voltage_element.innerText = "#";
+            }
+            let current_element = document.getElementById("current");
+            if (current_element) {
+                current_element.innerText = "#";
+            }
+            let power_element = document.getElementById("power");
+            if (power_element) {
+                power_element.innerText = "#";
+            }
+            let temperature_element = document.getElementById("temperature");
+            if (temperature_element) {
+                temperature_element.innerText = "#";
+            }
+            let error_element = document.getElementById("error");
+            if (error_element) {
+                error_element.innerText = "#";
+            }
 
             let row;
             for (let x = 0; x < 4; x++) {
