@@ -297,7 +297,7 @@
                                 document.getElementById("total_capacity").innerText = mean(capacities).toFixed(0) + " Ah";
                                 document.getElementById("total_charge").innerText = mean(charges).toFixed(0) + " Ah";
                                 document.getElementById("total_charge_rel").innerText = (mean(charges) / mean(capacities) * 100).toFixed(1) + " %";
-                                document.getElementById("total_voltage").innerText = mean(voltages).toFixed(1) + " V";
+                                document.getElementById("total_voltage").innerText = sum(voltages).toFixed(1) + " V";
                                 document.getElementById("total_current").innerText = mean(currents).toFixed(1) + " A";
                                 document.getElementById("total_power").innerText = (sum(voltages) * mean(currents)).toFixed(0) + " W";
                             } else {
