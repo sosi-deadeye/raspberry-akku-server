@@ -108,7 +108,35 @@
                         id="{{ 'error_{}'.format(node_loop.index) }}">{{ data['payload']['error_msg'] }}</td>
                     <td></td>
                 </tr>
+
+
+                <tr id="buttons1">
+                    <td>
+                        <button onclick="fetch('{{ 'http://' + addr + '/api/on' }}', {method: 'POST'});" id="on"
+                                type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
+                        </button>
+                    </td>
+                    <td colspan=3>
+                        <button id="off" type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
+                        </button>
+                    </td>
+                </tr>
+                <tr id="buttons2">
+                    <td colspan=1>
+                        <button id="reset" type="button" class="btn btn-primary btn-block btn-lg"><small>Akku
+                            Reset</small>
+                        </button>
+                    </td>
+                    <td colspan=2>
+                        <button id="ack" type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler
+                            Reset</small>
+                        </button>
+                    </td>
+                </tr>
+
+
             {% endfor -%}
+
             <tr>
                 <td colspan="3">
                     <p class="btn btn-success btn-block" type="button"

@@ -64,7 +64,7 @@
             </tr>
             </tbody>
         </table>
-        <table class="table table-striped table-dark" style="margin-bottom: 0;">
+        <table id="data-table" class="table table-striped table-dark" style="margin-bottom: 0;">
             <tbody>
             <tr>
                 <td id="hostname" colspan="2" class="text-center">LiFePo4</td>
@@ -129,7 +129,7 @@
         </table>
         <table class="table table-striped table-dark">
             <tbody>
-            <tr>
+            <tr id="buttons1">
                 <td>
                     <button id="on" type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
                     </button>
@@ -139,7 +139,7 @@
                     </button>
                 </td>
             </tr>
-            <tr>
+            <tr id="buttons2">
                 <td colspan=1>
                     <button id="reset" type="button" class="btn btn-primary btn-block btn-lg"><small>Akku Reset</small>
                     </button>
@@ -161,7 +161,7 @@
                             class="btn btn-dark btn-block btn-lg"><small>Einstellungen / Internet</small></button>
                 </td>
             </tr>
-            <tr>
+            <tr id="stats-tr">
                 <td colspan=3>
                     <button onclick="window.location.href='/graph'" id="settings" type="button"
                             class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
@@ -243,39 +243,42 @@
                 if (nodes[ip]["self"]) {
                     settings = nodes[ip]["settings"];
 
-                    tr_charge_abs = document.getElementById("tr_charge_abs");
-                    tr_charge_rel = document.getElementById("tr_charge_rel");
+                    if (document.getElementById("data-table")) {
+                        tr_charge_abs = document.getElementById("tr_charge_abs");
+                        tr_charge_rel = document.getElementById("tr_charge_rel");
 
-                    if (settings["without_charge"]) {
-                        if (tr_charge_abs) {
-                            tr_charge_abs.remove();
-                        }
-                        if (tr_charge_rel) {
-                            tr_charge_rel.remove();
+                        if (settings["without_charge"]) {
+                            if (tr_charge_abs) {
+                                tr_charge_abs.remove();
+                            }
+                            if (tr_charge_rel) {
+                                tr_charge_rel.remove();
+                            }
                         }
                     }
+                    if (document.getElementById("data-table")) {
+                        document.getElementById('hostname').innerText = nodes[ip]["hostname"];
+                        voltage_element = document.getElementById('voltage').innerText = voltage.toFixed(1) + " V";
+                        document.getElementById('temperature').innerText = temperature.toFixed(1) + " °C";
+                        document.getElementById('error').innerText = payload["error_msg"];
 
-                    document.getElementById('hostname').innerText = nodes[ip]["hostname"];
-                    document.getElementById('voltage').innerText = voltage.toFixed(1) + " V";
-                    document.getElementById('temperature').innerText = temperature.toFixed(1) + " °C";
-                    document.getElementById('error').innerText = payload["error_msg"];
-
-                    if (first_run) {
-                        first_run = false;
-                        if (voltage > 15) {
-                            lower_upper_voltage = true;
-                            for (let tr_cell_idx = 0; tr_cell_idx < 4; tr_cell_idx++) {
-                                tr_id = "tr_cell_" + tr_cell_idx;
-                                element = document.getElementById(tr_id);
-                                if (!element) {
-                                    break;
-                                } else {
-                                    element.remove();
+                        if (first_run) {
+                            first_run = false;
+                            if (voltage > 15) {
+                                lower_upper_voltage = true;
+                                for (let tr_cell_idx = 0; tr_cell_idx < 4; tr_cell_idx++) {
+                                    tr_id = "tr_cell_" + tr_cell_idx;
+                                    element = document.getElementById(tr_id);
+                                    if (!element) {
+                                        break;
+                                    } else {
+                                        element.remove();
+                                    }
                                 }
+                            } else {
+                                document.getElementById("tr_cell_lower").remove();
+                                document.getElementById("tr_cell_upper").remove();
                             }
-                        } else {
-                            document.getElementById("tr_cell_lower").remove();
-                            document.getElementById("tr_cell_upper").remove();
                         }
                     }
                 }
@@ -283,18 +286,39 @@
             element = document.getElementById("overview");
             if (element) {
                 // todo: test this
-                if (node_count < 2) {
+                if (node_count < 1) {
                     if (element) {
                         element.remove();
                     }
                 } else {
+
+                    buttons1 = document.getElementById("buttons1");
+                    buttons2 = document.getElementById("buttons2");
+                    data_table = document.getElementById("data-table");
+                    stats_tr = document.getElementById("stats-tr");
+
+                    if (buttons1) {
+                        buttons1.remove();
+                    }
+
+                    if (buttons2) {
+                        buttons2.remove();
+                    }
+
+                    if (data_table) {
+                        data_table.remove();
+                    }
+
+                    if (stats_tr) {
+                        stats_tr.remove();
+                    }
+
                     document.getElementById("total_low_cell_voltage").innerText = Math.min(...all_cell_voltages).toFixed(2) + " V";
                     document.getElementById("total_high_cell_voltage").innerText = Math.max(...all_cell_voltages).toFixed(2) + " V";
                     <!-- document.getElementById("total_low_temperature").innerText = Math.min(...temperatures).toFixed(1) + " °C"; -->
                     document.getElementById("all_errors").innerText = all_errors.join("\n");
                     document.getElementById("total_high_temperatur").innerText = Math.max(...temperatures).toFixed(1) + " °C";
                     if (settings["interconnection"] === "parallel_connection") {
-                        console.log(sum(capacities));
                         document.getElementById("total_capacity").innerText = sum(capacities).toFixed(0) + " Ah";
                         document.getElementById("total_charge").innerText = sum(charges).toFixed(0) + " Ah";
                         document.getElementById("total_charge_rel").innerText = (sum(charges) / sum(capacities) * 100).toFixed(1) + " %";
@@ -311,29 +335,27 @@
                     } else {
                         console.log("Unknown case: " + settings["interconnection"]);
                     }
-
-                    if (!lower_upper_voltage) {
-                        for (const cell_idx in cell_voltages) {
-                            cell_id = "cell" + cell_idx;
-                            document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2) + " V";
-                        }
-                    }
-                    if (lower_upper_voltage) {
-                        document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2) + " V";
-                        document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2) + " V";
-                    }
-
-                    document.getElementById('capacity').innerText = capacity.toFixed(0) + " Ah";
-                    if (tr_charge_abs) {
-                        document.getElementById('charge').innerText = charge.toFixed(0) + " Ah";
-                    }
-                    if (tr_charge_rel) {
-                        document.getElementById('charge_rel').innerText = (charge / capacity * 100).toFixed(1) + " %";
-                    }
-                    document.getElementById('current').innerText = current.toFixed(1) + " A";
-                    document.getElementById('power').innerText = (voltage * current).toFixed(0) + " W";
                 }
-                console.log(all_errors);
+                if (!lower_upper_voltage) {
+                    for (const cell_idx in cell_voltages) {
+                        cell_id = "cell" + cell_idx;
+                        document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2) + " V";
+                    }
+                }
+                if (lower_upper_voltage) {
+                    document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                    document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+                }
+
+                document.getElementById('capacity').innerText = capacity.toFixed(0) + " Ah";
+                if (tr_charge_abs) {
+                    document.getElementById('charge').innerText = charge.toFixed(0) + " Ah";
+                }
+                if (tr_charge_rel) {
+                    document.getElementById('charge_rel').innerText = (charge / capacity * 100).toFixed(1) + " %";
+                }
+                document.getElementById('current').innerText = current.toFixed(1) + " A";
+                document.getElementById('power').innerText = (voltage * current).toFixed(0) + " W";
             }
         }).catch(error => {
             document.getElementById('capacity').innerText = "#";
@@ -382,7 +404,7 @@
         setInterval(function () {
             update();
         }, 1000);
-    }())
+    })();
 </script>
 
 <script type="text/javascript">
@@ -418,11 +440,14 @@
         on_button.addEventListener('mouseup', cancel_timer);
     }
 
-
-    register_event("/api/on", "on", "Akku wird eingeschaltet", "", "Kein Erfolg", 2000);
-    register_event("/api/off", "off", "Akku wird ausgeschaltet", "", "Kein Erfolg", 2000);
-    register_event("/api/reset", "reset", "Akku wird zurückgesetzt.", "", "Kein Erfolg", 5000);
-    register_event("/api/ack", "ack", "Fehler wird quittiert.", "", "Kein Erfolg", 1000);
+    if (document.getElementById("buttons1")) {
+        register_event("/api/on", "on", "Akku wird eingeschaltet", "", "Kein Erfolg", 2000);
+        register_event("/api/off", "off", "Akku wird ausgeschaltet", "", "Kein Erfolg", 2000);
+    }
+    if (document.getElementById("buttons2")) {
+        register_event("/api/reset", "reset", "Akku wird zurückgesetzt.", "", "Kein Erfolg", 5000);
+        register_event("/api/ack", "ack", "Fehler wird quittiert.", "", "Kein Erfolg", 1000);
+    }
     register_event("/api/shutdown", "shutdown", "WLAN-Modul wird heruntergefahren.", "Die WLAN-Verbindung wird abgebrochen.\n\nZum Starten des WLAN-Moduls, den Knopf erneut drücken.", "Kein Erfolg", 5000);
 </script>
 
