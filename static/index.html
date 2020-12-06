@@ -238,7 +238,7 @@
                 currents.push(current);
                 all_cell_voltages = all_cell_voltages.concat(cell_voltages);
                 temperatures.push(temperature);
-                all_errors.push(nodes[ip]["hostname"] + ": " + payload["error_msg"]);
+                all_errors.push(payload["error_msg"]);
 
                 if (nodes[ip]["self"]) {
                     settings = nodes[ip]["settings"];
