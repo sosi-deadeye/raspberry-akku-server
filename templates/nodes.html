@@ -12,40 +12,42 @@
     {% if nodes %}
         <table class="table">
             <tr>
-                <td colspan="3"><p class="btn btn-success btn-block">Übersicht</p></td>
+                <td onclick="location.href='{{ '/' }}'" colspan="3"><p class="btn btn-success btn-block">Übersicht</p>
+                </td>
             </tr>
             <tr>
-                <td>Gesammtkapazität</td>
-                <td class="text-right"
-                    id="total_capacity">{{ nodes.values() | map(attribute='payload') | sum(attribute='capacity') | int }}</td>
-                <td>Ah</td>
+                <td>Kapazität</td>
+                <td class="text-right" id="total_capacity">#</td>
             </tr>
             {% if not settings['without_charge'] %}
                 <tr>
-                    <td>Gesammtladung</td>
-                    <td class="text-right"
-                        id="total_charge">{{ nodes.values() | map(attribute='payload') | sum(attribute='charge') | int }}</td>
-                    <td>Ah</td>
+                    <td>Ladung</td>
+                    <td class="text-right" id="total_charge">#
+                    </td>
+                </tr>
+                <tr>
+                    <td>Ladung</td>
+                    <td class="text-right" id="total_charge_rel">#
+                    </td>
                 </tr>
             {% endif %}
             <tr>
-                <td>Gesammtspannung</td>
-                <td class="text-right" id="total_voltage">{{ total_voltage | round(1) }}</td>
-                <td>V</td>
+                <td>Spannung</td>
+                <td class="text-right" id="total_voltage">#</td>
             </tr>
             <tr>
-                <td>Gesammtstrom</td>
-                <td class="text-right"
-                    id="total_current">{{ nodes.values() | map(attribute='payload') | sum(attribute='current') | round(1) }}</td>
-                <td>A</td>
+                <td>Strom</td>
+                <td class="text-right" id="total_current">#</td>
             </tr>
             <tr>
-                <td colspan="3"></td>
+                <td colspan="2"></td>
             </tr>
-            {%- for addr, data in nodes.items() %}
-                {% set node_loop = loop %}
+        </table>
+        {%- for addr, data in nodes.items() %}
+            {% set node_loop = loop %}
+            <table class="table">
                 <tr>
-                    <td colspan="3">
+                    <td colspan="2">
                         <p class="btn btn-success btn-block" type="button"
                            onclick="location.href='{{ 'http://' + addr }}'">
                             [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
@@ -55,104 +57,117 @@
                 <tr>
                     <td>Kapazität</td>
                     <td class="text-right"
-                        id="{{ 'capacity_{}'.format(loop.index) }}">{{ data['payload']['capacity'] }}</td>
-                    <td>Ah</td>
+                        id="{{ 'capacity_{}'.format(loop.index) }}">#
+                    </td>
                 </tr>
-                <tr>
-                </tr>
+                {% if not settings['without_charge'] %}
+                    <tr>
+                        <td>Ladung</td>
+                        <td class="text-right"
+                            id="{{ 'charge_{}'.format(loop.index) }}">#
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Ladung</td>
+                        <td class="text-right"
+                            id="{{ 'charge_rel_{}'.format(loop.index) }}">#
+                        </td>
+                    </tr>
+                {% endif %}
                 <tr>
                     <td>Spannung</td>
                     <td class="text-right"
-                        id="{{ 'voltage_{}'.format(loop.index) }}">{{ data['payload']['voltage'] | round(1) }}</td>
-                    <td>V</td>
+                        id="{{ 'voltage_{}'.format(loop.index) }}">#
+                    </td>
                 </tr>
                 <tr>
                     <td>Strom</td>
                     <td class="text-right"
-                        id="{{ 'current_{}'.format(loop.index) }}">{{ data['payload']['current'] | round(1) }}</td>
-                    <td>A</td>
+                        id="{{ 'current_{}'.format(loop.index) }}">#
+                    </td>
                 </tr>
                 <tr>
                     <td>Temperatur</td>
                     <td class="text-right"
-                        id="{{ 'temperature_{}'.format(loop.index) }}">{{ data['payload']['temperature'] | round(1) }}</td>
-                    <td>°C</td>
+                        id="{{ 'temperature_{}'.format(loop.index) }}">#
+                    </td>
                 </tr>
                 {% if total_voltage > 16 %}
                     <tr id="tr_upper_cell_voltage_{{ loop.index }}">
                         <td>Obere Zellspannung</td>
                         <td class="text-right"
-                            id="upper_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages']| max | round(2) }}</td>
-                        <td>V</td>
+                            id="upper_cell_voltage_{{ loop.index }}">#
+                        </td>
                     </tr>
                     <tr id="tr_lower_cell_voltage_{{ loop.index }}">
                         <td>Untere Zellspannung</td>
                         <td class="text-right"
-                            id="lower_cell_voltage_{{ loop.index }}">{{ data['payload']['cell_voltages'] | min | round(2) }}</td>
-                        <td>V</td>
+                            id="lower_cell_voltage_{{ loop.index }}">#
+                        </td>
                     </tr>
                 {% else %}
-                    </tr>
                     {%- for cell_voltage in data['payload']['cell_voltages'] %}
                         <tr>
                             <td>Zelle {{ loop.index }}</td>
                             <td class="text-right"
-                                id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">{{ cell_voltage|round(2) }}</td>
-                            <td>V</td>
+                                id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">#
+                            </td>
                         </tr>
                     {%- endfor %}
                 {% endif %}
                 <tr>
                     <td>Fehler</td>
-                    <td colspan="1" class="text-right"
-                        id="{{ 'error_{}'.format(node_loop.index) }}">{{ data['payload']['error_msg'] }}</td>
-                    <td></td>
-                </tr>
-                <tr id="stats-tr">
-                    <td colspan=3>
-                        <button onclick="window.location.href='/graph'" id="settings" type="button"
-                                class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
+                    <td class="text-right"
+                        id="{{ 'error_{}'.format(node_loop.index) }}">#
                     </td>
                 </tr>
-
-                <tr id="buttons1">
-                    <td>
-                        <button onclick="fetch('{{ 'http://' + addr + '/api/on' }}', {method: 'POST'});" id="on"
-                                type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
-                        </button>
-                    </td>
-                    <td colspan=3>
-                        <button onclick="fetch('{{ 'http://' + addr + '/api/off' }}', {method: 'POST'});" id="off"
-                                type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
-                        </button>
-                    </td>
-                </tr>
-                <tr id="buttons2">
-                    <td colspan=1>
-                        <button onclick="fetch('{{ 'http://' + addr + '/api/ack' }}',  {method: 'POST'});" id="reset"
-                                type="button" class="btn btn-primary btn-block btn-lg"><small>Akku
-                            Reset</small>
-                        </button>
-                    </td>
-                    <td colspan=2>
-                        <button onclick="fetch('{{ 'http://' + addr + '/api/reset' }}',  {method: 'POST'});" id="ack"
-                                type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler
-                            Reset</small>
-                        </button>
-                    </td>
-                </tr>
-
-
-            {% endfor -%}
-
-            <tr>
-                <td colspan="3">
-                    <p class="btn btn-success btn-block" type="button"
-                       onclick="location.href='{{ '/' }}'">Zurück
-                    </p>
+            </table>
+            <table class="table">
+            <tr id="stats-tr">
+                <td colspan=2>
+                    <button onclick="window.location.href='/graph'" id="settings" type="button"
+                            class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
                 </td>
             </tr>
-        </table>
+
+            <tr id="buttons1">
+                <td>
+                    <button onclick="fetch('{{ 'http://' + addr + '/api/on' }}', {method: 'POST'});" id="on"
+                            type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
+                    </button>
+                </td>
+                <td>
+                    <button onclick="fetch('{{ 'http://' + addr + '/api/off' }}', {method: 'POST'});" id="off"
+                            type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
+                    </button>
+                </td>
+            </tr>
+            <tr id="buttons2">
+                <td>
+                    <button onclick="fetch('{{ 'http://' + addr + '/api/ack' }}',  {method: 'POST'});" id="reset"
+                            type="button" class="btn btn-primary btn-block btn-lg"><small>Akku
+                        Reset</small>
+                    </button>
+                </td>
+                <td>
+                    <button onclick="fetch('{{ 'http://' + addr + '/api/reset' }}',  {method: 'POST'});" id="ack"
+                            type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler
+                        Reset</small>
+                    </button>
+                </td>
+            </tr>
+
+
+        {% endfor -%}
+
+    <tr>
+        <td colspan="3">
+            <p class="btn btn-success btn-block" type="button"
+               onclick="location.href='{{ '/' }}'">Zurück
+            </p>
+        </td>
+    </tr>
+    </table>
     {% else %}
         <h4 class="bg-warning"></h4>
     {% endif %}
@@ -161,6 +176,22 @@
 <script type="application/javascript">
     let first_run = true;
     let lower_upper_voltage = false;
+
+    function _sum(a, b) {
+        return a + b;
+    }
+
+    function sum(data) {
+        return data.reduce(_sum, 0);
+    }
+
+    function mean(data) {
+        return data.reduce(_sum, 0) / Object.keys(data).length;
+    }
+
+    function len(data) {
+        return Object.keys(data).length;
+    }
 
     function getter(nodes, node) {
         return function (key) {
@@ -188,6 +219,12 @@
                 let total_voltage = 0.0;
                 let g;
                 let td_total_charge;
+                let settings = {}
+                for (const node in nodes) {
+                    if (nodes[node]["self"]) {
+                        settings = nodes[node]["settings"];
+                    }
+                }
                 for (const node in nodes) {
                     g = getter(nodes, node);
                     capacity = g("capacity");
@@ -207,10 +244,18 @@
                         current = 0.0
                     }
 
-                    document.getElementById("capacity_" + i).innerText = capacity.toFixed(0);
-                    document.getElementById("voltage_" + i).innerText = voltage.toFixed(2);
-                    document.getElementById("current_" + i).innerText = current.toFixed(1);
-                    document.getElementById("temperature_" + i).innerText = temperature.toFixed(1);
+                    document.getElementById("capacity_" + i).innerText = capacity.toFixed(0) + " Ah";
+                    let charge_td = document.getElementById("charge_" + i);
+                    if (charge_td) {
+                        charge_td.innerText = charge.toFixed(0) + " Ah";
+                    }
+                    let charge_td_rel = document.getElementById("charge_rel_" + i);
+                    if (charge_td_rel) {
+                        charge_td_rel.innerText = (charge / capacity * 100).toFixed(1) + " %";
+                    }
+                    document.getElementById("voltage_" + i).innerText = voltage.toFixed(1) + " V";
+                    document.getElementById("current_" + i).innerText = current.toFixed(1) + " A";
+                    document.getElementById("temperature_" + i).innerText = temperature.toFixed(1) + " °C";
                     document.getElementById("error_" + i).innerText = error_msg;
 
                     let upper_cell_voltage;
@@ -218,10 +263,10 @@
                     upper_cell_voltage = document.getElementById("upper_cell_voltage_" + i);
                     lower_cell_voltage = document.getElementById("lower_cell_voltage_" + i);
                     if (upper_cell_voltage) {
-                        upper_cell_voltage.innerText = Math.max(...cell_voltages).toFixed(2);
+                        upper_cell_voltage.innerText = Math.max(...cell_voltages).toFixed(2) + " V";
                     }
                     if (lower_cell_voltage) {
-                        lower_cell_voltage.innerText = Math.min(...cell_voltages).toFixed(2);
+                        lower_cell_voltage.innerText = Math.min(...cell_voltages).toFixed(2) + " V";
                     }
 
                     let cell_idx = 1;
@@ -231,20 +276,36 @@
                         id = "cell_voltage_" + i + "_" + cell_idx;
                         td_cell = document.getElementById(id);
                         if (td_cell) {
-                            td_cell.innerText = voltage.toFixed(2);
+                            td_cell.innerText = voltage.toFixed(2) + " V";
                         }
                         cell_idx++;
                     }
                     i++;
                 }
-                let count = i - 1;
-                document.getElementById("total_capacity").innerText = total_capacity.toFixed(0);
+
+                if (settings["interconnection"] === "parallel_connection") {
+                    total_voltage /= len(nodes);
+                } else if (settings["interconnection"] === "series_connection") {
+                    total_capacity /= len(nodes);
+                    total_charge /= len(nodes);
+                    total_current /= len(nodes);
+                }
+
+                document.getElementById("total_capacity").innerText = total_capacity.toFixed(0) + " Ah";
                 td_total_charge = document.getElementById("total_charge");
                 if (td_total_charge) {
-                    td_total_charge.innerText = total_charge.toFixed(0);
+                    td_total_charge.innerText = total_charge.toFixed(0) + " Ah";
                 }
-                document.getElementById("total_voltage").innerText = (total_voltage / count).toFixed(1);
-                document.getElementById("total_current").innerText = total_current.toFixed(1);
+                let total_charge_rel = document.getElementById("total_charge_rel");
+                if (total_charge_rel) {
+                    total_charge_rel.innerText = (total_charge / total_capacity * 100).toFixed(1) + " %";
+                }
+                document.getElementById("total_voltage").innerText = total_voltage.toFixed(1) + " V";
+
+                if (Math.abs(total_current) < 0.8) {
+                    total_current = 0.0;
+                }
+                document.getElementById("total_current").innerText = total_current.toFixed(1) + " A";
             }
         )
     }
