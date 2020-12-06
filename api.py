@@ -18,7 +18,7 @@ from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
-from fastapi.middleware.cors import CORSMiddleware
+# from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel, Field
 from starlette.requests import Request
@@ -57,10 +57,13 @@ app = FastAPI(
     redoc_url=None,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 security = HTTPBasic()
 

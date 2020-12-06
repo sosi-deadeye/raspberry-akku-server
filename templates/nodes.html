@@ -122,22 +122,22 @@
                         </button>
                     </td>
                     <td colspan=3>
-                        <button onclick="fetch('{{ 'http://' + addr + '/api/off' }}', id=" off
-                        " type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
+                        <button onclick="fetch('{{ 'http://' + addr + '/api/off' }}', {method: 'POST'});" id="off"
+                                type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
                         </button>
                     </td>
                 </tr>
                 <tr id="buttons2">
                     <td colspan=1>
-                        <button onclick="fetch('{{ 'http://' + addr + '/api/ack' }}', id=" reset
-                        " type="button" class="btn btn-primary btn-block btn-lg"><small>Akku
-                        Reset</small>
+                        <button onclick="fetch('{{ 'http://' + addr + '/api/ack' }}',  {method: 'POST'});" id="reset"
+                                type="button" class="btn btn-primary btn-block btn-lg"><small>Akku
+                            Reset</small>
                         </button>
                     </td>
                     <td colspan=2>
-                        <button onclick="fetch('{{ 'http://' + addr + '/api/reset' }}', id=" ack
-                        " type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler
-                        Reset</small>
+                        <button onclick="fetch('{{ 'http://' + addr + '/api/reset' }}',  {method: 'POST'});" id="ack"
+                                type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler
+                            Reset</small>
                         </button>
                     </td>
                 </tr>
@@ -202,6 +202,10 @@
                     total_charge += charge;
                     total_voltage += voltage;
                     total_current += current;
+
+                    if (Math.abs(current) < 0.8) {
+                        current = 0.0
+                    }
 
                     document.getElementById("capacity_" + i).innerText = capacity.toFixed(0);
                     document.getElementById("voltage_" + i).innerText = voltage.toFixed(2);
