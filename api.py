@@ -662,7 +662,7 @@ async def redoc_html():
 @app.get("/api/nodes")
 async def api_get_nodes(request: Request):
     await nodes_live()
-    return node_server.nodes
+    return node_server.nodes_sorted
 
 
 @app.get("/nodes")
