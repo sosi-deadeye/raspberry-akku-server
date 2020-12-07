@@ -8,6 +8,7 @@
 </head>
 <body>
 <div class="container">
+
     <!-- todo: keep it or remove? -->
     <!--
     <img src="api/logo.png" alt="" class="float-sm-right my-3" />
@@ -353,27 +354,27 @@
                         console.log("Unknown case: " + settings["interconnection"]);
                     }
                 }
-                if (!lower_upper_voltage) {
-                    for (const cell_idx in cell_voltages) {
-                        cell_id = "cell" + cell_idx;
-                        document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2) + " V";
-                    }
-                }
-                if (lower_upper_voltage) {
-                    document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2) + " V";
-                    document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2) + " V";
-                }
-
-                document.getElementById('capacity').innerText = capacity.toFixed(0) + " Ah";
-                if (tr_charge_abs) {
-                    document.getElementById('charge').innerText = charge.toFixed(0) + " Ah";
-                }
-                if (tr_charge_rel) {
-                    document.getElementById('charge_rel').innerText = (charge / capacity * 100).toFixed(1) + " %";
-                }
-                document.getElementById('current').innerText = current.toFixed(1) + " A";
-                document.getElementById('power').innerText = (voltage * current).toFixed(0) + " W";
             }
+            if (!lower_upper_voltage) {
+                for (const cell_idx in cell_voltages) {
+                    cell_id = "cell" + cell_idx;
+                    document.getElementById(cell_id).innerText = cell_voltages[cell_idx].toFixed(2) + " V";
+                }
+            }
+            if (lower_upper_voltage) {
+                document.getElementById("cell_low").innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                document.getElementById("cell_high").innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+            }
+
+            document.getElementById('capacity').innerText = capacity.toFixed(0) + " Ah";
+            if (tr_charge_abs) {
+                document.getElementById('charge').innerText = charge.toFixed(0) + " Ah";
+            }
+            if (tr_charge_rel) {
+                document.getElementById('charge_rel').innerText = (charge / capacity * 100).toFixed(1) + " %";
+            }
+            document.getElementById('current').innerText = current.toFixed(1) + " A";
+            document.getElementById('power').innerText = (voltage * current).toFixed(0) + " W";
         }).catch(error => {
             let capacity_element = document.getElementById('capacity');
             if (capacity_element) {

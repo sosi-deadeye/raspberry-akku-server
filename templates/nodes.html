@@ -12,7 +12,8 @@
     {% if nodes %}
         <table class="table">
             <tr>
-                <td onclick="location.href='{{ '/' }}'" colspan="3"><p class="btn btn-success btn-block">Übersicht</p>
+                <td onclick="location.href='{{ '/' }}'" colspan="3">
+                    <p class="btn btn-success btn-block">Übersicht</p>
                 </td>
             </tr>
             <tr>
@@ -48,7 +49,7 @@
             <table class="table">
                 <tr>
                     <td colspan="2">
-                        <p class="btn btn-success btn-block" type="button"
+                        <p class="btn btn-success btn-block"
                            onclick="location.href='{{ 'http://' + addr }}'">
                             [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
                         </p>
@@ -133,36 +134,34 @@
             <tr id="buttons1">
                 <td>
                     <button onclick="fetch('{{ 'http://' + addr + '/api/on' }}', {method: 'POST'});" id="on"
-                            type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
+                            class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
                     </button>
                 </td>
                 <td>
                     <button onclick="fetch('{{ 'http://' + addr + '/api/off' }}', {method: 'POST'});" id="off"
-                            type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
+                            class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
                     </button>
                 </td>
             </tr>
             <tr id="buttons2">
                 <td>
                     <button onclick="fetch('{{ 'http://' + addr + '/api/ack' }}',  {method: 'POST'});" id="reset"
-                            type="button" class="btn btn-primary btn-block btn-lg"><small>Akku
+                            class="btn btn-primary btn-block btn-lg"><small>Akku
                         Reset</small>
                     </button>
                 </td>
                 <td>
                     <button onclick="fetch('{{ 'http://' + addr + '/api/reset' }}',  {method: 'POST'});" id="ack"
-                            type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler
+                            class="btn btn-warning btn-block btn-lg"><small>Fehler
                         Reset</small>
                     </button>
                 </td>
             </tr>
-
-
         {% endfor -%}
 
     <tr>
-        <td colspan="3">
-            <p class="btn btn-success btn-block" type="button"
+        <td colspan="2">
+            <p class="btn btn-success btn-block"
                onclick="location.href='{{ '/' }}'">Zurück
             </p>
         </td>
