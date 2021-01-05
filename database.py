@@ -82,9 +82,10 @@ class Statistik(Base):
     temperature = Column(Float)
 
 
-# check if database is bigger as 10 MiB
+# check if database is bigger as 20 MiB
 # and move it
-move_old_database(10)
+# todo: make it dynamic in 4.2
+move_old_database(20)
 engine = create_engine(DB_ENGINE, connect_args={"check_same_thread": False})
 try:
     Base.metadata.create_all(engine)
