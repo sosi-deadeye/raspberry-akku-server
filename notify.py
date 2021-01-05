@@ -30,7 +30,7 @@ def send_report(topic):
 
 
 def _send_report(topic):
-    with open('email.json') as fd:
+    with open('/media/data/email.json') as fd:
         settings = json.load(fd)
     with open('/etc/hostname') as fd:
         hostname = fd.read().strip()

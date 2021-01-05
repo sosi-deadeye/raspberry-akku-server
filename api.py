@@ -515,7 +515,7 @@ async def set_wlan(
 
 @app.get("/api/email")
 async def get_email(request: Request):
-    config = Path("email.json")
+    config = Path("/media/data/email.json")
     if config.exists():
         settings = json.loads(config.read_text())
     else:
@@ -557,7 +557,7 @@ async def post_email(
         if email_smtp_port == 0:
             email_smtp_port = smtp_settings["email_smtp_port"]
         email_smtp_ssl = smtp_settings["email_smtp_ssl"]
-    Path("email.json").write_text(
+    Path("/media/data/email.json").write_text(
         json.dumps(
             {
                 "email_from": email_from,
