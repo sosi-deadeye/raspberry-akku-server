@@ -2,9 +2,7 @@ aiofiles
 emails
 fastapi[extra]
 gpiozero
-gpiozero
 jinja2
-netifaces
 netifaces
 pendulum
 pydantic
@@ -12,8 +10,6 @@ pyserial
 python-hosts
 python-multipart
 requests
-requests
-RPi.GPIO
 RPi.GPIO
 sqlalchemy
 starlette
@@ -21,3 +17,4 @@ uvicorn
 wheel
 wifi
 zmq
+
