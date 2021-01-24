@@ -60,7 +60,7 @@
                 <td colspan="2" class="text-center"></td>
             </tr>
             <tr>
-                <td>Fehler</td>
+                <td>Meldung</td>
                 <td id="all_errors" class="text-right">#</td>
             </tr>
             </tbody>
@@ -123,7 +123,7 @@
                 <td id="temperature" class="text-right">#</td>
             </tr>
             <tr>
-                <td>Fehler</td>
+                <td>Meldung</td>
                 <td id="error" class="text-right">#</td>
             </tr>
             </tbody>
@@ -146,7 +146,7 @@
                     </button>
                 </td>
                 <td colspan=2>
-                    <button id="ack" type="button" class="btn btn-warning btn-block btn-lg"><small>Fehler Reset</small>
+                    <button id="ack" type="button" class="btn btn-warning btn-block btn-lg"><small>Meldung Reset</small>
                     </button>
                 </td>
             </tr>
@@ -553,7 +553,7 @@
     }
     if (document.getElementById("buttons2")) {
         register_event("/api/reset", "reset", "Akku wird zurückgesetzt.", "", "Kein Erfolg", 5000);
-        register_event("/api/ack", "ack", "Fehler wird quittiert.", "", "Kein Erfolg", 1000);
+        register_event("/api/ack", "ack", "Meldung wird quittiert.", "", "Kein Erfolg", 1000);
     }
     register_event("/api/shutdown", "shutdown", "WLAN-Modul wird heruntergefahren.", "Die WLAN-Verbindung wird abgebrochen.\n\nZum Starten des WLAN-Moduls, den Knopf erneut drücken.", "Kein Erfolg", 5000);
 </script>
