@@ -36,10 +36,12 @@
                 <td>Spannung</td>
                 <td class="text-right" id="total_voltage">#</td>
             </tr>
+            {% if not settings['without_current'] %}
             <tr>
                 <td>Strom</td>
                 <td class="text-right" id="total_current">#</td>
             </tr>
+            {% endif %}
             <tr>
                 <td colspan="2"></td>
             </tr>
@@ -81,12 +83,14 @@
                         id="{{ 'voltage_{}'.format(loop.index) }}">#
                     </td>
                 </tr>
+                {% if not settings['without_current'] %}
                 <tr>
                     <td>Strom</td>
                     <td class="text-right"
                         id="{{ 'current_{}'.format(loop.index) }}">#
                     </td>
                 </tr>
+                {% endif %}
                 <tr>
                     <td>Temperatur</td>
                     <td class="text-right"
@@ -124,13 +128,14 @@
                 </tr>
             </table>
             <table class="table">
+            {% if not settings['without_stats'] %}
             <tr id="stats-tr">
                 <td colspan=2>
                     <button onclick="window.location.href='/graph'" type="button"
                             class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
                 </td>
             </tr>
-
+            {% endif %}
             <tr id="buttons1">
                 <td>
                     <button id="{{ addr }}_on"
@@ -309,7 +314,9 @@
                         charge_td_rel.innerText = (charge / capacity * 100).toFixed(1) + " %";
                     }
                     document.getElementById("voltage_" + i).innerText = voltage.toFixed(1) + " V";
-                    document.getElementById("current_" + i).innerText = current.toFixed(1) + " A";
+                    if (document.getElementById("current_" + i)) {
+                        document.getElementById("current_" + i).innerText = current.toFixed(1) + " A";
+                    }
                     document.getElementById("temperature_" + i).innerText = temperature.toFixed(1) + " °C";
                     document.getElementById("error_" + i).innerText = error_msg;
 
@@ -360,7 +367,9 @@
                 if (Math.abs(total_current) < 0.8) {
                     total_current = 0.0;
                 }
-                document.getElementById("total_current").innerText = total_current.toFixed(1) + " A";
+                if (document.getElementById("total_current")) {
+                    document.getElementById("total_current").innerText = total_current.toFixed(1) + " A";
+                }
             }
         )
     }

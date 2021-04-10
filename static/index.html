@@ -40,7 +40,7 @@
                 <td>Spannung</td>
                 <td id="total_voltage" class="text-right">#</td>
             </tr>
-            <tr>
+            <tr id="tr_total_current">
                 <td>Strom</td>
                 <td id="total_current" class="text-right">#</td>
             </tr>
@@ -86,7 +86,7 @@
                 <td>Spannung</td>
                 <td id="voltage" class="text-right">#</td>
             </tr>
-            <tr>
+            <tr id="tr_current">
                 <td>Strom</td>
                 <td id="current" class="text-right">#</td>
             </tr>
@@ -204,6 +204,9 @@
                 let tr_charge_rel;
                 let tr_total_charge;
                 let tr_total_charge_rel;
+                let tr_total_current;
+                let tr_current;
+                let tr_stats;
 
                 let capacity = 0.0;
                 let charge = 0.0;
@@ -250,6 +253,9 @@
                         tr_charge_rel = document.getElementById("tr_charge_rel");
                         tr_total_charge = document.getElementById("tr_total_charge");
                         tr_total_charge_rel = document.getElementById("tr_total_charge_rel");
+                        tr_total_current = document.getElementById("tr_total_current");
+                        tr_current = document.getElementById("tr_current");
+                        tr_stats = document.getElementById("stats-tr");
 
                         if (settings["without_charge"]) {
                             if (tr_charge_abs) {
@@ -265,6 +271,22 @@
                                 tr_total_charge_rel.remove();
                             }
                         }
+
+                        if (settings["without_current"]) {
+                            if (tr_total_current) {
+                                tr_total_current.remove();
+                            }
+                            if (tr_current) {
+                                tr_current.remove();
+                            }
+                        }
+
+                        if (settings["without_stats"]) {
+                            if (tr_stats) {
+                                tr_stats.remove();
+                            }
+                        }
+
 
                         if (document.getElementById("data-table")) {
                             document.getElementById('hostname').innerText = nodes[ip]["hostname"];
@@ -337,7 +359,9 @@
                                 total_charge_rel_td.innerText = (sum(charges) / sum(capacities) * 100).toFixed(1) + " %";
                             }
                             document.getElementById("total_voltage").innerText = mean(voltages).toFixed(1) + " V";
-                            document.getElementById("total_current").innerText = sum(currents).toFixed(1) + " A";
+                            if (document.getElementById("total_current")) {
+                                document.getElementById("total_current").innerText = sum(currents).toFixed(1) + " A";
+                            }
                             document.getElementById("total_power").innerText = (mean(voltages) * sum(currents)).toFixed(0) + " W";
                         } else if (settings["interconnection"] === "series_connection") {
                             document.getElementById("total_capacity").innerText = mean(capacities).toFixed(0) + " Ah";
