@@ -1,47 +1,52 @@
 import asyncio
 import json
-import time
 import re
-from contextlib import contextmanager
+import shutil
+import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from subprocess import call
 from typing import List, Optional
 
-import zmq
 import requests
-from fastapi import Depends, FastAPI, Form, status, HTTPException, UploadFile, File
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import zmq
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
-# from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 from starlette.requests import Request
-from starlette.responses import StreamingResponse, RedirectResponse, FileResponse
+from starlette.responses import FileResponse, RedirectResponse, StreamingResponse
 from starlette.templating import Jinja2Templates
 
 import current_values
 import database
+import dev_password
 import errors
 import ispdb
+import nodes
 import notify
 import scan_wlan
+import setapname
 import statistiken
+import update
 import wlanpw
 import wpa_passphrase
-import nodes
-import setapname
-import update
-import dev_password
+
+# from fastapi.middleware.cors import CORSMiddleware
+
+
 
 
 TZ_FILE = Path("/etc/timezone")
 LOGO = Path("/media/data/logo.png")
+SCRIPT_PATH = Path(__file__).absolute().parent
+DATA_PATH = Path("/media/data")
 DEVELOPER_MODE = False
 
 session = database.Session()
@@ -138,7 +143,9 @@ async def logo():
     if LOGO.exists():
         return FileResponse("/media/data/logo.png", media_type="image/png")
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not installed")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="not installed"
+        )
 
 
 @app.get("/api/developer")
@@ -203,7 +210,9 @@ async def dev_settings_post(
     settings["interconnection"] = interconnection
     update_settings(settings)
     if manufacturer_password:
-        await loop.run_in_executor(executor, dev_password.set_password, manufacturer_password)
+        await loop.run_in_executor(
+            executor, dev_password.set_password, manufacturer_password
+        )
     current_branch = await loop.run_in_executor(executor, update.current_branch)
     if set_branch and set_branch != current_branch:
         with read_write_mode():
@@ -211,7 +220,9 @@ async def dev_settings_post(
             await loop.run_in_executor(None, update.pull)
             import compileall
 
-            await loop.run_in_executor(executor, compileall.compile_dir, "/home/server/akku")
+            await loop.run_in_executor(
+                executor, compileall.compile_dir, "/home/server/akku"
+            )
 
     return templates.TemplateResponse(
         "dev-settings.html",
@@ -353,6 +364,24 @@ async def shutdown(slave: bool = False):
     return {"success": True}
 
 
+@app.post("/api/reset-user-settings")
+async def reset_user_settings():
+    def copy_defaults():
+        # resetting custom hostname
+        try:
+            (DATA_PATH / "custom_hostname").unlink()
+        except FileNotFoundError:
+            pass
+
+        # copy default configurations
+        source = SCRIPT_PATH / "configurations"
+        for file in source.glob("*"):
+            shutil.copy(file, DATA_PATH)
+
+    await loop.run_in_executor(None, copy_defaults)
+    return {"success": True}
+
+
 @app.get("/api/update")
 def git_update(request: Request):
     info = update.get_last_commit()
@@ -418,7 +447,7 @@ async def reset_hostname(request: Request):
     global global_hostname
     # Path("/media/data/custom_hostname").unlink(missing_ok=True)
     try:
-        Path("/media/data/custom_hostname")
+        (DATA_PATH / "custom_hostname").unlink()
     except FileNotFoundError:
         pass
     hostname = setapname.create_hostname()
@@ -719,7 +748,12 @@ def _set_time(date_iso: str, time_iso: str, timezone: str):
 
 
 if __name__ in ("__main__", "api"):
-    settings_default = {"without_charge": False, "without_current": False, "without_stats": False, "interconnection": "parallel_connection"}
+    settings_default = {
+        "without_charge": False,
+        "without_current": False,
+        "without_stats": False,
+        "interconnection": "parallel_connection",
+    }
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
     control = ctx.socket(zmq.PUB)

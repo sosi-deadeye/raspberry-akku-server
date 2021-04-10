@@ -18,9 +18,39 @@
     <a href="/api/hostname" class="btn btn-info btn-block">Akku-Name</a>
     <a href="/nodes" class="btn btn-info btn-block">Block-Übersicht</a>
     <a href="/api/dev-settings" class="btn badge-dark btn-block">Service</a>
+    <a href="#" onclick="reset_user_settings();" class="btn btn-danger btn-block">Werkseinstellungen</a>
     <a href="/" class="btn btn-warning btn-block">Zurück</a>
 </div>
 
+<script>
+    function reset_user_settings() {
+        swal({
+            title: "Sind Sie sich sicher?",
+            text: "Möchten Sie das WLAN Modul auf Werkseinstellungen zurücksetzen?",
+            icon: "warning",
+            buttons: true,
+            dangerMode: true,
+        }).then((willDelete) => {
+            if (willDelete) {
+                fetch("/api/reset-user-settings", {"method": "POST"}).then(
+                    function (response) {
+                        return response.json();
+                    }).then(function (myJson) {
+                    if (myJson["success"] === true) {
+                        swal("WLAN Modul ist auf Werkseinstellungen zurückgesetzt worden. Bitte das Modul herunterfahren und neustarten", {
+                            icon: "success",
+                        });
+                    } else {
+                        swal("Es wurden keine Daten verändert");
+                    }
+                });
+            } else {
+                swal("Es wurden keine Daten verändert");
+            }
+        })
+
+    }
+</script>
 
 <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
 <script src="/vendor/popper/popper.min.js"></script>
