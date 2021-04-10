@@ -168,6 +168,8 @@ async def dev_settings(
         {
             "request": request,
             "without_charge": settings["without_charge"],
+            "without_current": settings["without_current"],
+            "without_stats": settings["without_stats"],
             "branches": update.branches(),
             "current_branch": update.current_branch(),
             "interconnection": settings["interconnection"],
@@ -180,6 +182,8 @@ async def dev_settings_post(
     request: Request,
     credentials: HTTPBasicCredentials = Depends(security),
     without_charge: str = Form(""),
+    without_current: str = Form(""),
+    without_stats: str = Form(""),
     set_branch: str = Form(""),
     interconnection: str = Form(...),
     manufacturer_password: str = Form(""),
@@ -194,6 +198,8 @@ async def dev_settings_post(
             await loop.run_in_executor(executor, logo_disk.write, data)
 
     settings["without_charge"] = bool(without_charge.strip())
+    settings["without_current"] = bool(without_current.strip())
+    settings["without_stats"] = bool(without_stats.strip())
     settings["interconnection"] = interconnection
     update_settings(settings)
     if manufacturer_password:
@@ -212,6 +218,8 @@ async def dev_settings_post(
         {
             "request": request,
             "without_charge": settings["without_charge"],
+            "without_current": settings["without_current"],
+            "without_stats": settings["without_stats"],
             "branches": update.branches(),
             "current_branch": current_branch,
             "interconnection": interconnection,
@@ -711,7 +719,7 @@ def _set_time(date_iso: str, time_iso: str, timezone: str):
 
 
 if __name__ in ("__main__", "api"):
-    settings_default = {"without_charge": False, "interconnection": "parallel_connection"}
+    settings_default = {"without_charge": False, "without_current": False, "without_stats": False, "interconnection": "parallel_connection"}
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
     control = ctx.socket(zmq.PUB)
