@@ -1,7 +1,11 @@
 import datetime
+from pathlib import Path
 from typing import Generator, Optional
 
-import pendulum
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
 
 from database import (
     Session,
@@ -10,7 +14,8 @@ from database import (
     desc,
 )
 
-tz = pendulum.timezone("Europe/Berlin")
+timezone_file = Path("/etc/timezone")
+tz = ZoneInfo(timezone_file.read_text().strip())
 
 
 def get_stats(
@@ -41,7 +46,7 @@ def get_stats(
         query = session.query(Statistik).filter(Statistik.cycle == cycle).all()
     for row in query:
         csv_row = (
-            tz.fromutc(row.timestamp).isoformat()[:-6],
+            row.timestamp.astimezone(tz).isoformat()[:-6],
             round_func(row.voltage),
             round_func(row.current),
             round_func(row.charge),
