@@ -38,11 +38,6 @@ import update
 import wlanpw
 import wpa_passphrase
 
-# from fastapi.middleware.cors import CORSMiddleware
-
-
-
-
 TZ_FILE = Path("/etc/timezone")
 LOGO = Path("/media/data/logo.png")
 SCRIPT_PATH = Path(__file__).absolute().parent
@@ -56,19 +51,11 @@ dev_settings_file = Path("/media/data/settings.json")
 
 app = FastAPI(
     title="LiFePo4-Akku",
-    version="4.0",
+    version="4.3.0pre",
     description="Rest API für des LiFePo4-Akkus",
     docs_url=None,
     redoc_url=None,
 )
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
 
 security = HTTPBasic()
 
@@ -77,6 +64,15 @@ def update_settings(new_settings: dict):
     settings.update(new_settings)
     dev_settings_file.write_text(json.dumps(settings))
     node_server.update_settings(settings)
+
+
+async def reboot_watchdog():
+    print("Started reboot watchdog")
+    while True:
+        await asyncio.sleep(10)
+        if time.monotonic() > settings["reboot_delay_seconds"]:
+            loop.call_later(10, call, ["reboot"])
+            break
 
 
 class Hotspots(BaseModel):
@@ -180,6 +176,7 @@ async def dev_settings(
             "branches": update.branches(),
             "current_branch": update.current_branch(),
             "interconnection": settings["interconnection"],
+            "reboot_delay_days": int(settings["reboot_delay_seconds"] / 60 / 60 / 24),
         },
     )
 
@@ -194,6 +191,7 @@ async def dev_settings_post(
     set_branch: str = Form(""),
     interconnection: str = Form(...),
     manufacturer_password: str = Form(""),
+    reboot_delay_days: int = Form(...),
     upload_logo: UploadFile = File(...),
 ):
     if not dev_password.check_password(credentials.password):
@@ -208,6 +206,7 @@ async def dev_settings_post(
     settings["without_current"] = bool(without_current.strip())
     settings["without_stats"] = bool(without_stats.strip())
     settings["interconnection"] = interconnection
+    settings["reboot_delay_seconds"] = int(reboot_delay_days * 60 * 60 * 24)
     update_settings(settings)
     if manufacturer_password:
         await loop.run_in_executor(
@@ -234,6 +233,7 @@ async def dev_settings_post(
             "branches": update.branches(),
             "current_branch": current_branch,
             "interconnection": interconnection,
+            "reboot_delay_days": reboot_delay_days,
         },
     )
 
@@ -380,6 +380,25 @@ async def reset_user_settings():
 
     await loop.run_in_executor(None, copy_defaults)
     return {"success": True}
+
+
+@app.get("/api/reboot-delay")
+async def get_reboot_delay():
+    try:
+        days = int(settings["reboot_delay_seconds"]) / 24 / 60 / 60
+    except TypeError:
+        return {"days": 0}
+    else:
+        return {"days": days}
+
+
+@app.post("/api/reboot-delay")
+async def set_reboot_delay(days: int):
+    if days != 0:
+        settings["reboot_delay_seconds"] = int(days * 24 * 60 * 60)
+    else:
+        settings["reboot_delay_seconds"] = None
+    update_settings(settings)
 
 
 @app.get("/api/update")
@@ -753,6 +772,7 @@ if __name__ in ("__main__", "api"):
         "without_current": False,
         "without_stats": False,
         "interconnection": "parallel_connection",
+        "reboot_delay_seconds": None,
     }
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
@@ -772,3 +792,4 @@ if __name__ in ("__main__", "api"):
     update_settings(settings)
     node_server.start()
     loop = asyncio.get_event_loop()
+    loop.create_task(reboot_watchdog())
