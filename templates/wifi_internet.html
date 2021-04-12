@@ -27,6 +27,17 @@
             <label for="client_mode">Beim Start mit WLAN-Hotspot verbinden</label>
             <input type="checkbox" id="client_mode" name="client_mode" {{ client_mode }}>
         </div>
+
+        <label for="dd">Sichtbare WLAN Netzwerke werden in dieser Liste angezeigt und können ausgewählt werden. Die SSID wird dann übernommen.</label>
+        <div class="dropdown" id="dd">
+            <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                WLAN Netzwerke
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" id="access-points">
+                <!-- <a class="dropdown-item" href="#">Action</a> -->
+            </div>
+        </div>
         <br/>
         <button type="submit" class="btn btn-primary">Speichern</button>
         <br/><br/>
@@ -38,6 +49,31 @@
         <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
     </form>
 </div>
+
+<script type="text/javascript">
+    let ap;
+    fetch("/api/wlan/list").then(function (request) {
+        return request.json()
+    }).then(function (data) {
+        let text;
+        let menu;
+        let div;
+        menu = document.getElementById("access-points");
+        for (ap in data["aps"]) {
+            text = data["aps"][ap];
+            div = document.createElement("div");
+            div.innerText = text;
+            div.className = "dropdown-item";
+            div.onclick = function (butt) {
+                let src;
+                src = butt.target.innerText;
+                // console.log(src)
+                document.getElementById("ssid").value = src;
+            }
+            menu.appendChild(div);
+        }
+    })
+</script>
 
 <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
 <script src="/vendor/popper/popper.min.js"></script>
