@@ -70,7 +70,10 @@ async def reboot_watchdog():
     print("Started reboot watchdog")
     while True:
         await asyncio.sleep(10)
-        if time.monotonic() > settings["reboot_delay_seconds"]:
+        delay = settings["reboot_delay_seconds"]
+        if delay in (None, 0):
+            continue
+        if time.monotonic() > delay:
             loop.call_later(10, call, ["reboot"])
             break
 
@@ -166,6 +169,9 @@ async def dev_settings(
 ):
     if not dev_password.check_password(credentials.password):
         raise UnauthorizedException
+    reboot_delay_seconds = settings["reboot_delay_seconds"]
+    if reboot_delay_seconds is None:
+        reboot_delay_seconds = 0
     return templates.TemplateResponse(
         "dev-settings.html",
         {
@@ -176,7 +182,7 @@ async def dev_settings(
             "branches": update.branches(),
             "current_branch": update.current_branch(),
             "interconnection": settings["interconnection"],
-            "reboot_delay_days": int(settings["reboot_delay_seconds"] / 60 / 60 / 24),
+            "reboot_delay_days": int(reboot_delay_seconds / 60 / 60 / 24),
         },
     )
 
