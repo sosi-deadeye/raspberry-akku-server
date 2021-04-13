@@ -394,7 +394,7 @@ async def get_reboot_delay():
 
 @app.post("/api/reboot-delay")
 async def set_reboot_delay(days: int):
-    if days != 0:
+    if days >= 1:
         settings["reboot_delay_seconds"] = int(days * 24 * 60 * 60)
     else:
         settings["reboot_delay_seconds"] = None
