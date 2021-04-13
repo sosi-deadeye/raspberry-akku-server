@@ -778,7 +778,7 @@ if __name__ in ("__main__", "api"):
         "without_current": False,
         "without_stats": False,
         "interconnection": "parallel_connection",
-        "reboot_delay_seconds": None,
+        "reboot_delay_seconds": 0,
     }
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences
