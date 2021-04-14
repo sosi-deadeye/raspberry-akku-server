@@ -6,7 +6,7 @@ from pathlib import Path
 from subprocess import call
 from contextlib import contextmanager
 
-from python_hosts import Hosts, HostsEntry
+# from python_hosts import Hosts, HostsEntry
 
 
 ALPHA = string.ascii_lowercase + string.ascii_uppercase + string.digits + "-"
@@ -24,52 +24,59 @@ def read_write():
 
 
 def get_serial() -> str:
-    cpuinfo = Path("/proc/cpuinfo").read_text()
-    # Serial          : 00000000413c11de
-    for line in cpuinfo.splitlines():
-        if "Serial" in line:
-            return line.strip().split(":")[1].strip()[8:]
-    else:
-        return "FFF00000"
+    """
+    Returns from 8th position on the cpu serial number
 
-
-def set_ap(host_name=None):
-    hostapd_conf = Path("/etc/hostapd/hostapd.conf")
-    name = f"ssid=Akku{get_serial()}" if host_name is None else f"ssid={host_name}"
-    try:
-        new_config = re.sub(
-            r"^ssid=(.*)", name, hostapd_conf.read_text(), flags=re.MULTILINE,
-        )
-    except Exception as e:
-        print(repr(e))
-    else:
-        if new_config:
-            hostapd_conf.write_text(new_config)
+    Example:
+        original serial number: 00000000413c11de
+        return value: 413c11de
+    """
+    with open("/proc/cpuinfo") as fd:
+        for line in fd:
+            if "Serial" in line:
+                return line.strip().split(":")[1].strip()[8:]
+        else:
+            return "FFF00000"
 
 
 def get_hostname() -> str:
+    """
+    Return /etc/hostname
+    """
     with open("/etc/hostname") as fd:
         return fd.read().strip()
 
 
 def create_hostname() -> str:
-    serial = get_serial()
-    return f"Akku{serial}"
+    return f"Akku{get_serial()}"
 
 
-def set_hostname(name=None):
-    if name is None:
-        name = create_hostname()
-    etc_hostname = Path("/etc/hostname")
-    if etc_hostname.read_text().strip() != name:
-        with read_write():
-            etc_hostname.write_text(name + "\n")
-        call(["hostname", name])
-        call(["systemctl", "restart", "avahi-daemon"])
+def set_ap(host_name: str):
+    """
+    Set the ssid of access point to provided host_name
+    """
+    hostapd_conf = Path("/etc/hostapd/hostapd.conf")
+    name = f"ssid={host_name}"
+    new_config = re.sub(
+        r"^ssid=(.*)", name, hostapd_conf.read_text(), flags=re.MULTILINE,
+    )
+    try:
+        hostapd_conf.write_text(new_config)
+    except PermissionError:
+        pass
 
 
-def set_hostname_dhclient():
-    hostname = get_hostname()
+def set_hostname(host_name: str):
+    """
+    Write host_name to /etc/hostname
+    """
+    with read_write():
+        with open("/etc/hostname", "w") as fd:
+            fd.write(host_name + "\n")
+
+
+# Remove?
+def set_hostname_dhclient(hostname: str):
     fmt = 'send host-name = "{}";'
     regex = re.compile(r'send host\-name ?= ?"?(.+)"?;')
     config = Path("/media/data/dhclient.conf")
@@ -81,8 +88,9 @@ def set_hostname_dhclient():
             config.write_text(new)
 
 
-def set_hosts():
-    hostname = get_hostname()
+def set_hosts(hostname: str):
+    from python_hosts import Hosts, HostsEntry
+
     hosts_file = Hosts()
     entry = HostsEntry(entry_type="ipv4", address="127.0.0.1", names=[hostname])
     current_hosts = [
@@ -93,28 +101,33 @@ def set_hosts():
     for current_host in current_hosts:
         for name in current_host.names:
             hosts_file.remove_all_matching(name=name)
-
+    print(f"Adding entry to hosts: {entry}")
     hosts_file.add([entry])
     with read_write():
         hosts_file.write()
 
 
-def set_hostname_kernel(name):
+def set_hostname_kernel(name: str):
     call(["hostname", name])
 
 
-def set_all(name):
+def set_all(name: str):
     set_ap(name)
     set_hostname(name)
     set_hostname_kernel(name)
-    set_hostname_dhclient()
-    set_hosts()
+    set_hostname_dhclient(name)
+    set_hosts(name)
 
 
 if __name__ == "__main__":
-    host_name = None
-    if len(sys.argv) == 2:
-        host_name = sys.argv[1]
-    if Path("/media/data/custom_hostname").exists():
-        host_name = get_hostname()
-    set_all(host_name)
+    custom_hostname = Path("/media/data/custom_hostname").exists()
+    default_hostname = create_hostname()
+    etc_hostname = get_hostname()
+
+    print(f"Custom: {custom_hostname}")
+    print(f"default: {default_hostname}")
+    print(f"/etc/hostname: {etc_hostname}")
+    if not custom_hostname and default_hostname != etc_hostname:
+        set_all(default_hostname)
+    elif custom_hostname:
+        set_all(etc_hostname)

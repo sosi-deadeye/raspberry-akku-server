@@ -61,7 +61,7 @@ def start_client():
     )
     call(["systemctl", "stop", "hostapd"])
     call(["ifdown", "ap0"])
-    call(["systemctl", "start", "wlan-ap-del"])
+    # call(["systemctl", "start", "wlan-ap-del"])
     call(["ifup", "wlan0"])
 
 
