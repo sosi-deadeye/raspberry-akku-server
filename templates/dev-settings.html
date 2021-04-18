@@ -12,37 +12,33 @@
     <h1 class="text-center text-success">Herstellerseitige Einstellungen</h1>
     <form class="p-3 mb-2 bg-dark text-white" action="/api/dev-settings" method="post" enctype="multipart/form-data">
         <div class="form-group">
+            <br/>
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="without_charge" id="without_charge"
-                value="without_charge" {{ 'checked' if without_charge else '' }}>
+                       value="without_charge" {{ 'checked' if without_charge else '' }}>
                 <label class="form-check-label" for="without_charge">Anzeige der Ladung unterdrücken</label>
             </div>
 
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="without_stats" id="without_stats"
-                value="without_stats" {{ 'checked' if without_stats else '' }}>
+                       value="without_stats" {{ 'checked' if without_stats else '' }}>
                 <label class="form-check-label" for="without_stats">Anzeige der Statistik unterdrücken</label>
             </div>
 
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="without_current" id="without_current"
-                value="without_current" {{ 'checked' if without_current else '' }}>
+                       value="without_current" {{ 'checked' if without_current else '' }}>
                 <label class="form-check-label" for="without_current">Anzeige des Stroms unterdrücken</label>
             </div>
 
             <div class="form-check">
                 <input class="form-" type="number" name="reboot_delay_days" id="reboot_delay_days"
-                value="{{ reboot_delay_days }}">
+                       value="{{ reboot_delay_days }}">
                 <br/>
-                <label class="form-label" for="reboot_delay_days">Automatischer Neustart nach Tagen</label>
+                <label class="form-label" for="reboot_delay_days">Automatischer Neustart nach Tagen (0 => deaktiviert)</label>
             </div>
 
             <br/>
-            <br/>
-
-            <div class="text-info">
-                Verhindert die Anzeige der Ladung auf der Hauptseite und den benachbarten Modulen.
-            </div>
 
             <br/>
 
