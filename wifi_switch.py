@@ -14,6 +14,11 @@ from gpiozero import (
     LED,
 )
 
+import setapname
+
+
+setapname.main()
+
 AP = "ap0"
 CLIENT = "wlan0"
 MODES = (AP, CLIENT)

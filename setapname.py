@@ -75,7 +75,6 @@ def set_hostname(host_name: str):
             fd.write(host_name + "\n")
 
 
-# Remove?
 def set_hostname_dhclient(hostname: str):
     fmt = 'send host-name = "{}";'
     regex = re.compile(r'send host\-name ?= ?"?(.+)"?;')
@@ -119,7 +118,7 @@ def set_all(name: str):
     set_hosts(name)
 
 
-if __name__ == "__main__":
+def main():
     custom_hostname = Path("/media/data/custom_hostname").exists()
     default_hostname = create_hostname()
     etc_hostname = get_hostname()
@@ -131,3 +130,7 @@ if __name__ == "__main__":
         set_all(default_hostname)
     elif custom_hostname:
         set_all(etc_hostname)
+
+
+if __name__ == "__main__":
+    main()
