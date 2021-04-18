@@ -188,22 +188,22 @@ class FrameParser:
         (Frame.A, Control.Query, 0, 4): {"type": Data.QueryVoltage},
         (Frame.A, Control.Answer, 0, 4): {
             "type": Data.AnswerVoltage,
-            "constraints": lambda x: 0 < x[0] < 200,
+            "constraints": lambda x: 0 < x[0] < 300,
         },
         (Frame.A, Control.Query, 1, 4): {"type": Data.QueryCurrent},
         (Frame.A, Control.Answer, 1, 4): {
             "type": Data.AnswerCurrent,
-            "constraints": lambda x: -1000 < x[0] < 1000,
+            "constraints": lambda x: -2500 < x[0] < 2500,
         },
         (Frame.A, Control.Query, 0, 6): {"type": Data.QueryCharge},
         (Frame.A, Control.Answer, 0, 6): {
             "type": Data.AnswerCharge,
-            "constraints": lambda x: -100 < x[0] < 2000,
+            "constraints": lambda x: -100 < x[0] < 10000,
         },
         (Frame.A, Control.Query, 1, 6): {"type": Data.QueryCapacity},
         (Frame.A, Control.Answer, 1, 6): {
             "type": Data.AnswerCapacity,
-            "constraints": lambda x: -100 < x[0] < 1000,
+            "constraints": lambda x: -100 < x[0] < 10000,
         },
         (Frame.A, Control.Query, 0, 7): {"type": Data.QueryCellVoltage},
         (Frame.A, Control.Answer, 0, 7): {
@@ -749,11 +749,10 @@ class SerialTxLock:
             result = GPIO.wait_for_edge(
                 self.rxd_sense, GPIO.RISING, timeout=self.rxd_timeout
             )
-            if result is None:
-                log.critical("Timeout bei der Antwort")
-                return False
-            else:
+            if result is not None:
                 return True
+            log.critical("Timeout bei der Antwort")
+            return False
         return True
 
     def txd_sense_wait(self) -> None:
@@ -1021,7 +1020,7 @@ QUERIES_LIVE: QueriesType = [
     (query_load(), 60),
     (query_cell_temperature(), 60),
     *[(query_cell_voltage(n), 60) for n in range(4)],
-    (query_error_flags(), 2),
+    (query_error_flags(), 60),
 ]
 
 QUERIES_NORMAL: QueriesType = [
