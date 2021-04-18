@@ -298,28 +298,6 @@ def live():
     return True
 
 
-@app.get("/api/aktuelle_werte", response_model=CurrentValues)
-async def get_current_values():
-    await nodes_live()
-    values = current_values.get_values()
-    if (time.monotonic() - values["timestamp"]) > 10:
-        return {key: "#" for key in values}
-    values["power"] = values["voltage"] * values["current"]
-    try:
-        values["charge_rel"] = values["charge"] / values["capacity"] * 100
-    except ZeroDivisionError:
-        values["charge_rel"] = 0
-    values["errors"] = errors.get_short(values["error"])
-    if values["voltage"] > 16:
-        values["lower_cell_voltage"] = min(values["cell_voltages"])
-        values["upper_cell_voltage"] = max(values["cell_voltages"])
-    else:
-        values["lower_cell_voltage"] = None
-        values["upper_cell_voltage"] = None
-    values["hostname"] = global_hostname
-    return values
-
-
 @app.get("/graph")
 async def graph(request: Request):
     async with graph_busy:
