@@ -183,6 +183,8 @@ async def dev_settings(
             "current_branch": update.current_branch(),
             "interconnection": settings["interconnection"],
             "reboot_delay_days": int(reboot_delay_seconds / 60 / 60 / 24),
+            "charge_warn_limit": settings["charge_warn_limit"],
+            "charge_off_limit": settings["charge_off_limit"],
         },
     )
 
@@ -198,6 +200,8 @@ async def dev_settings_post(
     interconnection: str = Form(...),
     manufacturer_password: str = Form(""),
     reboot_delay_days: int = Form(...),
+    charge_warn_limit: int = Form(...),
+    charge_off_limit: int = Form(...),
     upload_logo: UploadFile = File(...),
 ):
     if not dev_password.check_password(credentials.password):
@@ -213,6 +217,8 @@ async def dev_settings_post(
     settings["without_stats"] = bool(without_stats.strip())
     settings["interconnection"] = interconnection
     settings["reboot_delay_seconds"] = int(reboot_delay_days * 60 * 60 * 24)
+    settings["charge_warn_limit"] = int(charge_warn_limit)
+    settings["charge_off_limit"] = int(charge_off_limit)
     update_settings(settings)
     if manufacturer_password:
         await loop.run_in_executor(
@@ -240,6 +246,8 @@ async def dev_settings_post(
             "current_branch": current_branch,
             "interconnection": interconnection,
             "reboot_delay_days": reboot_delay_days,
+            "charge_warn_limit": charge_warn_limit,
+            "charge_off_limit": charge_off_limit,
         },
     )
 
@@ -757,6 +765,8 @@ if __name__ in ("__main__", "api"):
         "without_stats": False,
         "interconnection": "parallel_connection",
         "reboot_delay_seconds": 0,
+        "charge_warn_limit": 15,
+        "charge_off_limit": 10,
     }
     ctx = zmq.Context()
     # noinspection PyUnresolvedReferences

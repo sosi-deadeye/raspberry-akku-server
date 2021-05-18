@@ -31,13 +31,29 @@
                 <label class="form-check-label" for="without_current">Anzeige des Stroms unterdrücken</label>
             </div>
 
-            <div class="form-check">
-                <input class="form-" type="number" name="reboot_delay_days" id="reboot_delay_days"
+            <br/>
+
+            <div class="form">
+                <input class="form" type="number" name="reboot_delay_days" id="reboot_delay_days"
                        value="{{ reboot_delay_days }}">
                 <br/>
-                <label class="form-label" for="reboot_delay_days">Automatischer Neustart nach Tagen (0 => deaktiviert)</label>
+                <label class="form-label" for="reboot_delay_days">Automatischer Neustart nach Tagen (0 =>
+                    deaktiviert)</label>
             </div>
 
+            <div class="form">
+                <input class="form" type="number" name="charge_warn_limit" id="charge_warn_limit"
+                       value="{{ charge_warn_limit }}">
+                <br/>
+                <label class="form-label" for="charge_warn_limit">Ladung Warnung %</label>
+            </div>
+
+            <div class="form">
+                <input class="form" type="number" name="charge_off_limit" id="charge_off_limit"
+                       value="{{ charge_off_limit }}">
+                <br/>
+                <label class="form-label" for="charge_off_limit">Ladung Abschaltung %</label>
+            </div>
             <br/>
 
             <br/>
@@ -107,7 +123,6 @@
         </div>
     </form>
 </div>
-
 
 <script src="/vendor/jquery/jquery-3.3.1.slim.min.js"></script>
 <script src="/vendor/popper/popper.min.js"></script>

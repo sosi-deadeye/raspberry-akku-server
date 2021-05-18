@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import math
 import statistics
 import struct
 import time
 from argparse import ArgumentParser
 from collections import deque
-from enum import IntEnum, Enum
-from logging import getLogger, basicConfig, DEBUG, INFO
+from enum import Enum, IntEnum
+from logging import DEBUG, INFO, basicConfig, getLogger
 from queue import Empty as QueueEmpty
 from queue import PriorityQueue, Queue
 from subprocess import call
 from threading import Thread
-from typing import Union, List, Tuple, Optional
+from typing import List, Optional, Tuple, Union
 
 import RPi.GPIO as GPIO
 import serial
@@ -22,16 +23,8 @@ import zmq
 import errors
 import notify
 import timedaemon
-from database import (
-    Session,
-    Configuration,
-    Error,
-    State,
-    set_cycle,
-    Statistik,
-)
 from current_values import set_values as set_current_values
-
+from database import Configuration, Error, Session, State, Statistik, set_cycle
 
 TXD_EN = 17  # /Transmit Data Enable
 TXD_SENSE = 22  # Receive Data Sense
@@ -345,7 +338,13 @@ class FrameParser:
 
 class DataReader(Thread):
     def __init__(
-        self, answer_queue: ManyQueue, queries: QueryScheduler, cells: int = 4,
+        self,
+        answer_queue: ManyQueue,
+        queries: QueryScheduler,
+        *,
+        cells: int = 4,
+        charge_warn_limit: int = 15,
+        charge_off_limit: int = 10,
     ):
         self.timedelta_queue: Queue
         self.answer_queue: ManyQueue = answer_queue
@@ -382,6 +381,8 @@ class DataReader(Thread):
         self.stats_current: deque = deque(maxlen=4)
         self.stats_charge: deque = deque(maxlen=4)
         self.notified: bool = False
+        self.charge_warn_limit = charge_warn_limit
+        self.charge_off_limit = charge_off_limit
         super().__init__()
 
     def handle_error(self, error_flags: int) -> None:
@@ -503,18 +504,20 @@ class DataReader(Thread):
                 off_limit = 10
 
                 if not self.notified and off_limit < relative_load < warning_limit:
-                    log.warning("Ladung unter 15%. E-Mail wird gesendet.")
+                    log.warning(
+                        f"Ladung unter {self.charge_warn_limit}%. E-Mail wird gesendet."
+                    )
                     notify_thread = Thread(
                         target=notify.send_report,
                         args=(
-                            "Die Ladung des Akkus liegt zwuschen 10 und 15%. Bitte nachladen.",
+                            f"Die Ladung des Akkus liegt zwischen {self.charge_off_limit} und {self.charge_warn_limit}%. Bitte nachladen.",
                         ),
                     )
                     notify_thread.start()
                     self.notified = True
                 elif relative_load < off_limit:
                     notify.send_report(
-                        "Die Ladung des Akkus ist unter 10%. Das Wlan-Modul wird heruntergefahren."
+                        f"Die Ladung des Akkus ist unter {self.charge_off_limit}%. Das Wlan-Modul wird heruntergefahren."
                     )
                     log.warning(f"Achtung Ladung: {relative_load:.1f} %")
                     self.power_off()
@@ -1059,5 +1062,21 @@ if __name__ == "__main__":
         command_server.start()
 
         log.debug("Starte Datenlogger")
-        data_logger = DataReader(serial_receiver_queue, query_scheduler)
+
+        try:
+            with open("/media/data/settings.json") as fd:
+                data = json.load(fd)
+        except (FileNotFoundError, ValueError):
+            charge_warn_limit = 15
+            charge_off_limit = 10
+        else:
+            charge_warn_limit = data.get("charge_warn_limit", 15)
+            charge_off_limit = data.get("charge_off_limit", 10)
+
+        data_logger = DataReader(
+            serial_receiver_queue,
+            query_scheduler,
+            charge_warn_limit=charge_warn_limit,
+            charge_off_limit=charge_off_limit,
+        )
         data_logger.start()
