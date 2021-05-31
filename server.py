@@ -196,7 +196,7 @@ class FrameParser:
         (Frame.A, Control.Query, 1, 6): {"type": Data.QueryCapacity},
         (Frame.A, Control.Answer, 1, 6): {
             "type": Data.AnswerCapacity,
-            "constraints": lambda x: -100 < x[0] < 10000,
+            "constraints": lambda x: 100 < x[0] < 10000,
         },
         (Frame.A, Control.Query, 0, 7): {"type": Data.QueryCellVoltage},
         (Frame.A, Control.Answer, 0, 7): {
