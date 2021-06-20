@@ -1033,7 +1033,7 @@ QUERIES_LIVE: QueriesType = [
     (query_current(), 2),
     (query_load(), 60),
     (query_cell_temperature(), 60),
-    *[(query_cell_voltage(n), 60) for n in range(4)],
+    *[(query_cell_voltage(n), 10) for n in range(4)],
     (query_error_flags(), 60),
     (query_cell_voltage(0xFE), 10),
     (query_cell_voltage(0xFF), 10),
