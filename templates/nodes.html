@@ -10,170 +10,170 @@
 
 <div class="container">
     {% if nodes %}
-        <table class="table">
-            <tr>
-                <td onclick="location.href='{{ '/' }}'" colspan="2">
-                    <p class="btn btn-success btn-block">Übersicht</p>
-                </td>
-            </tr>
-            <tr>
-                <td>Kapazität</td>
-                <td class="text-right" id="total_capacity">#</td>
-            </tr>
-            {% if not settings['without_charge'] %}
-                <tr>
-                    <td>Ladung</td>
-                    <td class="text-right" id="total_charge">#
-                    </td>
-                </tr>
-                <tr>
-                    <td>Ladung</td>
-                    <td class="text-right" id="total_charge_rel">#
-                    </td>
-                </tr>
-            {% endif %}
-            <tr>
-                <td>Spannung</td>
-                <td class="text-right" id="total_voltage">#</td>
-            </tr>
-            {% if not settings['without_current'] %}
-            <tr>
-                <td>Strom</td>
-                <td class="text-right" id="total_current">#</td>
-            </tr>
-            {% endif %}
-            <tr>
-                <td colspan="2"></td>
-            </tr>
-        </table>
-        {%- for addr, data in nodes.items() %}
-            {% set node_loop = loop %}
-            <table class="table">
-                <tr>
-                    <td colspan="2">
-                        <p class="btn btn-success btn-block"
-                           onclick="location.href='{{ 'http://' + addr }}'">
-                            [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Kapazität</td>
-                    <td class="text-right"
-                        id="{{ 'capacity_{}'.format(loop.index) }}">#
-                    </td>
-                </tr>
-                {% if not settings['without_charge'] %}
-                    <tr>
-                        <td>Ladung</td>
-                        <td class="text-right"
-                            id="{{ 'charge_{}'.format(loop.index) }}">#
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Ladung</td>
-                        <td class="text-right"
-                            id="{{ 'charge_rel_{}'.format(loop.index) }}">#
-                        </td>
-                    </tr>
-                {% endif %}
-                <tr>
-                    <td>Spannung</td>
-                    <td class="text-right"
-                        id="{{ 'voltage_{}'.format(loop.index) }}">#
-                    </td>
-                </tr>
-                {% if not settings['without_current'] %}
-                <tr>
-                    <td>Strom</td>
-                    <td class="text-right"
-                        id="{{ 'current_{}'.format(loop.index) }}">#
-                    </td>
-                </tr>
-                {% endif %}
-                <tr>
-                    <td>Temperatur</td>
-                    <td class="text-right"
-                        id="{{ 'temperature_{}'.format(loop.index) }}">#
-                    </td>
-                </tr>
-                {% if total_voltage > 16 %}
-                    <tr id="tr_upper_cell_voltage_{{ loop.index }}">
-                        <td>Obere Zellspannung</td>
-                        <td class="text-right"
-                            id="upper_cell_voltage_{{ loop.index }}">#
-                        </td>
-                    </tr>
-                    <tr id="tr_lower_cell_voltage_{{ loop.index }}">
-                        <td>Untere Zellspannung</td>
-                        <td class="text-right"
-                            id="lower_cell_voltage_{{ loop.index }}">#
-                        </td>
-                    </tr>
-                {% else %}
-                    {%- for cell_voltage in data['payload']['cell_voltages'] %}
-                        <tr>
-                            <td>Zelle {{ loop.index }}</td>
-                            <td class="text-right"
-                                id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">#
-                            </td>
-                        </tr>
-                    {%- endfor %}
-                {% endif %}
-                <tr>
-                    <td>Meldung</td>
-                    <td class="text-right"
-                        id="{{ 'error_{}'.format(node_loop.index) }}">#
-                    </td>
-                </tr>
-            </table>
-            <table class="table">
-            {% if not settings['without_stats'] %}
-            <tr id="stats-tr">
-                <td colspan=2>
-                    <button onclick="window.location.href='/graph'" type="button"
-                            class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
-                </td>
-            </tr>
-            {% endif %}
-            <tr id="buttons1">
-                <td>
-                    <button id="{{ addr }}_on"
-                            class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
-                    </button>
-                </td>
-                <td>
-                    <button id="{{ addr }}_off"
-                            class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
-                    </button>
-                </td>
-            </tr>
-            <tr id="buttons2">
-                <td>
-                    <button id="{{ addr }}_reset"
-                            class="btn btn-primary btn-block btn-lg"><small>Akku
-                        Reset</small>
-                    </button>
-                </td>
-                <td>
-                    <button id="{{ addr }}_ack"
-                            class="btn btn-warning btn-block btn-lg"><small>Meldung
-                        Reset</small>
-                    </button>
-                </td>
-            </tr>
+    <table class="table">
+        <tr>
+            <td onclick="location.href='{{ '/' }}'" colspan="2">
+                <p class="btn btn-success btn-block">Übersicht</p>
+            </td>
+        </tr>
+        <tr>
+            <td>Kapazität</td>
+            <td class="text-right" id="total_capacity">#</td>
+        </tr>
+        {% if not settings['without_charge'] %}
+        <tr>
+            <td>Ladung</td>
+            <td class="text-right" id="total_charge">#
+            </td>
+        </tr>
+        <tr>
+            <td>Ladung</td>
+            <td class="text-right" id="total_charge_rel">#
+            </td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td>Spannung</td>
+            <td class="text-right" id="total_voltage">#</td>
+        </tr>
+        {% if not settings['without_current'] %}
+        <tr>
+            <td>Strom</td>
+            <td class="text-right" id="total_current">#</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td colspan="2"></td>
+        </tr>
+    </table>
+    {%- for addr, data in nodes.items() %}
+    {% set node_loop = loop %}
+    <table class="table">
+        <tr>
+            <td colspan="2">
+                <p class="btn btn-success btn-block"
+                   onclick="location.href='{{ 'http://' + addr }}'">
+                    [{{ loop.index }}] {{ data['hostname'] }} - {{ addr }}
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td>Kapazität</td>
+            <td class="text-right"
+                id="{{ 'capacity_{}'.format(loop.index) }}">#
+            </td>
+        </tr>
+        {% if not settings['without_charge'] %}
+        <tr>
+            <td>Ladung</td>
+            <td class="text-right"
+                id="{{ 'charge_{}'.format(loop.index) }}">#
+            </td>
+        </tr>
+        <tr>
+            <td>Ladung</td>
+            <td class="text-right"
+                id="{{ 'charge_rel_{}'.format(loop.index) }}">#
+            </td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td>Spannung</td>
+            <td class="text-right"
+                id="{{ 'voltage_{}'.format(loop.index) }}">#
+            </td>
+        </tr>
+        {% if not settings['without_current'] %}
+        <tr>
+            <td>Strom</td>
+            <td class="text-right"
+                id="{{ 'current_{}'.format(loop.index) }}">#
+            </td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td>Temperatur</td>
+            <td class="text-right"
+                id="{{ 'temperature_{}'.format(loop.index) }}">#
+            </td>
+        </tr>
+        {% if total_voltage > 16 %}
+        <tr id="tr_upper_cell_voltage_{{ loop.index }}">
+            <td>Obere Zellspannung</td>
+            <td class="text-right"
+                id="upper_cell_voltage_{{ loop.index }}">#
+            </td>
+        </tr>
+        <tr id="tr_lower_cell_voltage_{{ loop.index }}">
+            <td>Untere Zellspannung</td>
+            <td class="text-right"
+                id="lower_cell_voltage_{{ loop.index }}">#
+            </td>
+        </tr>
+        {% else %}
+        {%- for cell_voltage in data['payload']['cell_voltages'] %}
+        <tr>
+            <td>Zelle {{ loop.index }}</td>
+            <td class="text-right"
+                id="{{ 'cell_voltage_{}_{}'.format(node_loop.index, loop.index) }}">#
+            </td>
+        </tr>
+        {%- endfor %}
+        {% endif %}
+        <tr>
+            <td>Meldung</td>
+            <td class="text-right"
+                id="{{ 'error_{}'.format(node_loop.index) }}">#
+            </td>
+        </tr>
+    </table>
+    <table class="table">
+        {% if not settings['without_stats'] %}
+        <tr id="stats-tr">
+            <td colspan=2>
+                <button onclick="window.location.href='/graph'" type="button"
+                        class="btn btn-dark btn-block btn-lg"><small>Statistiken</small></button>
+            </td>
+        </tr>
+        {% endif %}
+        <tr id="buttons1">
+            <td>
+                <button id="{{ addr }}_on"
+                        class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
+                </button>
+            </td>
+            <td>
+                <button id="{{ addr }}_off"
+                        class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
+                </button>
+            </td>
+        </tr>
+        <tr id="buttons2">
+            <td>
+                <button id="{{ addr }}_reset"
+                        class="btn btn-primary btn-block btn-lg"><small>Akku
+                    Reset</small>
+                </button>
+            </td>
+            <td>
+                <button id="{{ addr }}_ack"
+                        class="btn btn-warning btn-block btn-lg"><small>Meldung
+                    Reset</small>
+                </button>
+            </td>
+        </tr>
         {% endfor -%}
 
-    <tr>
-        <td colspan="2">
-            <p class="btn btn-success btn-block"
-               onclick="location.href='{{ '/' }}'">Zurück
-            </p>
-        </td>
-    </tr>
+        <tr>
+            <td colspan="2">
+                <p class="btn btn-success btn-block"
+                   onclick="location.href='{{ '/' }}'">Zurück
+                </p>
+            </td>
+        </tr>
     </table>
     {% else %}
-        <h4 class="bg-warning"></h4>
+    <h4 class="bg-warning"></h4>
     {% endif %}
 </div>
 
@@ -188,23 +188,14 @@
     }
 
     function register_event(endpoint, element_id, msg_ok_title, msg_ok_text, msg_error, timeout) {
-        console.log("endpoint: " + endpoint);
-        console.log("element_id: " + element_id);
-        console.log("msg_ok_title: " + msg_ok_title);
-        console.log("msg_ok_text: " + msg_ok_text);
-        console.log("msg_error: " + msg_error);
-        console.log("timeout: " + timeout);
-        console.log("========================");
         function do_action(event) {
             on_timeout = setTimeout(function () {
                 fetch(endpoint, {"method": "POST"}).then(function (response) {
                     return response.json();
                 }).then(function (myJson) {
                     if (myJson["success"] === true) {
-                        console.log(msg_ok_title + "\n" + msg_ok_text);
                         swal(msg_ok_title, msg_ok_text);
                     } else {
-                        console.log(msg_error);
                         swal(msg_error);
                     }
                 });
@@ -260,6 +251,8 @@
                 let total_capacity = 0;
                 let total_charge = 0.0;
                 let total_voltage = 0.0;
+                let current_lower_cell_voltage;
+                let current_upper_cell_voltage;
                 let g;
                 let td_total_charge;
                 let settings = {}
@@ -272,12 +265,10 @@
 
                 if (first_run) {
                     first_run = false;
-                    console.log("First Run");
+                    // console.log("First Run");
                     for (const node in nodes) {
                         let base_url = "http://" + node;
                         let node_hostname = nodes[node]["hostname"];
-                        console.log(node_hostname);
-                        console.log(base_url);
                         register_event(base_url + "/api/on", node + "_on", node_hostname + " wird eingeschaltet", "", "Kein Erfolg", 2000);
                         register_event(base_url + "/api/off", node + "_off", node_hostname + " wird ausgeschaltet", "", "Kein Erfolg", 2000);
                         register_event(base_url + "/api/ack", node + "_ack", node_hostname + " wird quittiert.", "", "Kein Erfolg", 1000);
@@ -294,6 +285,9 @@
                     temperature = g("temperature");
                     cell_voltages = g("cell_voltages");
                     error_msg = g("error_msg");
+
+                    current_lower_cell_voltage = g("lower_cell_voltage");
+                    current_upper_cell_voltage = g("upper_cell_voltage");
 
                     total_capacity += capacity;
                     total_charge += charge;
@@ -325,10 +319,12 @@
                     upper_cell_voltage = document.getElementById("upper_cell_voltage_" + i);
                     lower_cell_voltage = document.getElementById("lower_cell_voltage_" + i);
                     if (upper_cell_voltage) {
-                        upper_cell_voltage.innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+                        // upper_cell_voltage.innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+                        upper_cell_voltage.innerText = current_lower_cell_voltage.toFixed(2) + " V";
                     }
                     if (lower_cell_voltage) {
-                        lower_cell_voltage.innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                        // lower_cell_voltage.innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                        lower_cell_voltage.innerText = current_upper_cell_voltage.toFixed(2) + " V";
                     }
 
                     let cell_idx = 1;
