@@ -21,10 +21,9 @@ tz = ZoneInfo(timezone_file.read_text().strip())
 def get_stats(
     session: Session, cycle: int, history: Optional[float] = None, rounding: Optional[int] = None
 ) -> Generator[str, None, None]:
-    if rounding is not None:
-        round_func = lambda x: round(x, rounding)
-    else:
-        round_func = lambda x: x
+    round_func = (
+        (lambda x: x) if rounding is None else (lambda x: round(x, rounding))
+    )
     whitespace = " "
     header = (
         "timestamp",

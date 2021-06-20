@@ -18,7 +18,6 @@
                        value="without_charge" {{ 'checked' if without_charge else '' }}>
                 <label class="form-check-label" for="without_charge">Anzeige der Ladung unterdrücken</label>
             </div>
-
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="without_stats" id="without_stats"
                        value="without_stats" {{ 'checked' if without_stats else '' }}>
@@ -57,70 +56,296 @@
             <br/>
 
             <br/>
+            <p span class="badge bg-secondary">Abfragen im unbeobachteten Modus (Normal)</p>
+            <table>
+                <thead>
+                <tr>
+                    <th colspan="2">Art</th>
+                    <th>Wiederholung in Sekunden</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>Spannung</td>
+                    <td><input type="checkbox" name="normal_voltage_active" {{ 'checked' if normal_voltage_active else
+                        '' }}>
+                    </td>
+                    <td><input type="number" name="normal_voltage_delay" value="{{ normal_voltage_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Strom</td>
+                    <td><input type="checkbox" name="normal_current_active" {{ 'checked' if normal_current_active else
+                        '' }}>
+                    </td>
+                    <td><input type="number" name="normal_current_delay" value="{{ normal_current_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Ladung</td>
+                    <td><input type="checkbox" name="normal_charge_active" {{ 'checked' if normal_charge_active else ''
+                        }}>
+                    </td>
+                    <td><input type="number" name="normal_charge_delay" value="{{ normal_charge_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Temperatur</td>
+                    <td><input type="checkbox" name="normal_temperature_active" {{ 'checked' if
+                        normal_temperature_active else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_temperature_delay" value="{{ normal_temperature_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Fehlerabfrage</td>
+                    <td><input type="checkbox" name="normal_errorflags_active" {{ 'checked' if normal_errorflags_active
+                        else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_errorflags_delay" value="{{ normal_errorflags_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 1</td>
+                    <td><input type="checkbox" name="normal_cell_voltage_0_active" {{ 'checked' if
+                        normal_cell_voltage_0_active else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_cell_voltage_0_delay"
+                               value="{{ normal_cell_voltage_0_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 2</td>
+                    <td><input type="checkbox" name="normal_cell_voltage_1_active" {{ 'checked' if
+                        normal_cell_voltage_1_active else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_cell_voltage_1_delay"
+                               value="{{ normal_cell_voltage_1_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 3</td>
+                    <td><input type="checkbox" name="normal_cell_voltage_2_active" {{ 'checked' if
+                        normal_cell_voltage_2_active else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_cell_voltage_2_delay"
+                               value="{{ normal_cell_voltage_2_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 4</td>
+                    <td><input type="checkbox" name="normal_cell_voltage_3_active" {{ 'checked' if
+                        normal_cell_voltage_3_active else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_cell_voltage_3_delay"
+                               value="{{ normal_cell_voltage_3_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Obere Zellspannung</td>
+                    <td><input type="checkbox" name="normal_upper_cell_voltage_active" {{ 'checked' if
+                        normal_upper_cell_voltage_active else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_upper_cell_voltage_delay"
+                               value="{{ normal_upper_cell_voltage_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Untere Zellspannung</td>
+                    <td><input type="checkbox" name="normal_lower_cell_voltage_active" {{ 'checked' if
+                        normal_lower_cell_voltage_active else '' }}>
+                    </td>
+                    <td><input type="number" name="normal_lower_cell_voltage_delay"
+                               value="{{ normal_lower_cell_voltage_delay }}">
+                    </td>
+                </tr>
+                </tbody>
+            </table>
 
-            <select class="form-control" id="interconnection" name="interconnection">
-                {% if interconnection == 'series_connection' %}
+            <br/>
+
+            <p span class="badge bg-primary">Abfragen im beobachtetem Modus (Live)</p>
+            <table>
+                <thead>
+                <tr>
+                    <th colspan="2">Art</th>
+                    <th>Wiederholung in Sekunden</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>Spannung</td>
+                    <td><input type="checkbox" name="live_voltage_active" {{ 'checked' if live_voltage_active else
+                        '' }}>
+                    </td>
+                    <td><input type="number" name="live_voltage_delay" value="{{ live_voltage_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Strom</td>
+                    <td><input type="checkbox" name="live_current_active" {{ 'checked' if live_current_active else
+                        '' }}>
+                    </td>
+                    <td><input type="number" name="live_current_delay" value="{{ live_current_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Ladung</td>
+                    <td><input type="checkbox" name="live_charge_active" {{ 'checked' if live_charge_active else ''
+                        }}>
+                    </td>
+                    <td><input type="number" name="live_charge_delay" value="{{ live_charge_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Temperatur</td>
+                    <td><input type="checkbox" name="live_temperature_active" {{ 'checked' if
+                        live_temperature_active else '' }}>
+                    </td>
+                    <td><input type="number" name="live_temperature_delay" value="{{ live_temperature_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Fehlerabfrage</td>
+                    <td><input type="checkbox" name="live_errorflags_active" {{ 'checked' if live_errorflags_active
+                        else '' }}>
+                    </td>
+                    <td><input type="number" name="live_errorflags_delay" value="{{ live_errorflags_delay }}"></td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 1</td>
+                    <td><input type="checkbox" name="live_cell_voltage_0_active" {{ 'checked' if
+                        live_cell_voltage_0_active else '' }}>
+                    </td>
+                    <td><input type="number" name="live_cell_voltage_0_delay"
+                               value="{{ live_cell_voltage_0_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 2</td>
+                    <td><input type="checkbox" name="live_cell_voltage_1_active" {{ 'checked' if
+                        live_cell_voltage_1_active else '' }}>
+                    </td>
+                    <td><input type="number" name="live_cell_voltage_1_delay"
+                               value="{{ live_cell_voltage_1_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 3</td>
+                    <td><input type="checkbox" name="live_cell_voltage_2_active" {{ 'checked' if
+                        live_cell_voltage_2_active else '' }}>
+                    </td>
+                    <td><input type="number" name="live_cell_voltage_2_delay"
+                               value="{{ live_cell_voltage_2_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Zellspannung 4</td>
+                    <td><input type="checkbox" name="live_cell_voltage_3_active" {{ 'checked' if
+                        live_cell_voltage_3_active else '' }}>
+                    </td>
+                    <td><input type="number" name="live_cell_voltage_3_delay"
+                               value="{{ live_cell_voltage_3_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Obere Zellspannung</td>
+                    <td><input type="checkbox" name="live_upper_cell_voltage_active" {{ 'checked' if
+                        live_upper_cell_voltage_active else '' }}>
+                    </td>
+                    <td><input type="number" name="live_upper_cell_voltage_delay"
+                               value="{{ live_upper_cell_voltage_delay }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Untere Zellspannung</td>
+                    <td><input type="checkbox" name="live_lower_cell_voltage_active" {{ 'checked' if
+                        live_lower_cell_voltage_active else '' }}>
+                    </td>
+                    <td><input type="number" name="live_lower_cell_voltage_delay"
+                               value="{{ live_lower_cell_voltage_delay }}">
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <br/>
+
+            <div>
+                <h6>Betriebsmodi - Normal/Live</h6>
+                <div class="text-info">
+                    Der beobachtete Modus (live) ist aktiv, solange die Werte aktiv abgefragt
+                    werden.
+                    <p>
+                        Auf der Hauptseite und auf der Übersichtsseite werden die Werte aktiv abgefragt.
+                    </p>
+                    <p>
+                        Wenn die Werte nicht abgefragt werden, schaltet das WLAN-Modul nach 10 Sekunden wieder
+                        in den unbeobachteten Modus (normaler Modus).
+                    </p>
+                    <p>
+                        In beiden Modi werden die Messdaten in der Datenbank gespeichert.
+                    </p>
+                </div>
+
+                <br/>
+
+                <select class="form-control" id="interconnection" name="interconnection">
+                    {% if interconnection == 'series_connection' %}
                     <option value="series_connection" selected="selected">Reihenschaltung</option>
                     <option value="parallel_connection">Parallelschaltung</option>
-                {% elif interconnection == 'parallel_connection' %}
+                    {% elif interconnection == 'parallel_connection' %}
                     <option value="series_connection">Reihenschaltung</option>
                     <option value="parallel_connection" selected="selected">Parallelschaltung</option>
-                {% endif %}
-            </select>
-            <label class="select-label" for="interconnection">Art der Verschaltung</label>
-
-            <br/>
-
-            <select class="form-control" id="set_branch" name="set_branch">
-                {% if current_branch == 'master' %}
-                    <option value="master" selected="selected">master</option>
-                {% else %}
-                    <option value="master">master</option>
-                {% endif %}
-                {% for branch in branches %}
-                    {% if current_branch == branch %}
-                        <option value="{{ branch }}" selected="selected">{{ branch }}</option>
-                    {% elif branch == 'master' %}
-                        {{ continue }}
-                    {% else %}
-                        <option value="{{ branch }}">{{ branch }}</option>
                     {% endif %}
-                {% endfor %}
-            </select>
-            <label class="select-label" for="set_branch">Aktueller Branch</label>
+                </select>
+                <label class="select-label" for="interconnection">Art der Verschaltung</label>
 
-            <br/>
-            <div class="text-info">
-                Der stabile Zweig ist der <b>master</b>.
-                Die anderen Branches dienen zu Testzwecken.
-                So können zukünftig Änderungen ausprobiert werden.
+                <br/><br/>
+                <h6>Software-Version</h6>
+                <select class="form-control" id="set_branch" name="set_branch">
+                    {% if current_branch == 'master' %}
+                    <option value="master" selected="selected">master</option>
+                    {% else %}
+                    <option value="master">master</option>
+                    {% endif %}
+                    {% for branch in branches %}
+                    {% if current_branch == branch %}
+                    <option value="{{ branch }}" selected="selected">{{ branch }}</option>
+                    {% elif branch == 'master' %}
+                    {{ continue }}
+                    {% else %}
+                    <option value="{{ branch }}">{{ branch }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+                <label class="select-label" for="set_branch">Aktueller Branch</label>
+
+                <br/>
+                <div class="text-info">
+                    Der stabile Zweig ist der <b>master</b>.
+                    Die anderen Branches dienen zu Testzwecken.
+                    So können zukünftig Änderungen ausprobiert werden.
+                </div>
+
+                <br/>
+
+                <input type="text" class="form-control" id="manufacturer_password" name="manufacturer_password"
+                       placeholder="Herstellerpasswort">
+                <label for="manufacturer_password">Herstellerpasswort setzen</label>
+                <div class="text-info">
+                    Das Herstellerpasswort wird nur gesetzt, wenn eins eingegeben worden ist.
+                    Das Passwort wird im Klartext angezeigt und deswegen auch im Browser gespeichert.
+                    Das Passwort wird kryptografisch sicher auf der Daten-Partition abgespeichert.
+                    Es kann nicht wieder hergestellt werden.
+                </div>
+
+                <br/>
+
+                <div class="custom-file">
+                    <input type="file" id="upload_logo" name="upload_logo">
+                    <label class="custom-file-label" for="upload_logo">Herstellerlogo hochladen</label>
+                </div>
+
+                <br/><br/>
+
+                <button type="submit" class="btn badge-primary btn-block">Speichern</button>
+                <a href="/api/update" class="btn badge-primary btn-block">Update</a>
+                <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
             </div>
-
-            <br/>
-
-            <input type="text" class="form-control" id="manufacturer_password" name="manufacturer_password"
-                   placeholder="Herstellerpasswort">
-            <label for="manufacturer_password">Herstellerpasswort setzen</label>
-            <div class="text-info">
-                Das Herstellerpasswort wird nur gesetzt, wenn eins eingegeben worden ist.
-                Das Passwort wird im Klartext angezeigt und deswegen auch im Browser gespeichert.
-                Das Passwort wird kryptografisch sicher auf der Daten-Partition abgespeichert.
-                Es kann nicht wieder hergestellt werden.
-            </div>
-
-            <br/>
-
-            <div class="custom-file">
-                <input type="file" id="upload_logo" name="upload_logo">
-                <label class="custom-file-label" for="upload_logo">Herstellerlogo hochladen</label>
-            </div>
-
-            <br/><br/>
-
-            <button type="submit" class="btn badge-primary btn-block">Speichern</button>
-            <a href="/api/update" class="btn badge-primary btn-block">Update</a>
-            <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
-        </div>
     </form>
 </div>
 

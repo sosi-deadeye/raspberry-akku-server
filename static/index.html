@@ -221,6 +221,8 @@
                 let all_cell_voltages = [];
                 let temperatures = [];
                 let all_errors = [];
+                let lower_cell_voltage = 0.0;
+                let upper_cell_voltage = 0.0;
 
                 let node_count = Object.keys(nodes).length;
 
@@ -237,6 +239,8 @@
 
                     cell_voltages = payload["cell_voltages"];
                     temperature = payload["temperature"];
+                    lower_cell_voltage = payload["lower_cell_voltage"];
+                    upper_cell_voltage = payload["upper_cell_voltage"];
 
                     capacities.push(capacity);
                     charges.push(charge);
@@ -335,6 +339,7 @@
                             buttons2.remove();
                         }
 
+
                         if (data_table) {
                             data_table.remove();
                         }
@@ -343,9 +348,8 @@
                             stats_tr.remove();
                         }
 
-                        document.getElementById("total_low_cell_voltage").innerText = Math.min(...all_cell_voltages).toFixed(2) + " V";
-                        document.getElementById("total_high_cell_voltage").innerText = Math.max(...all_cell_voltages).toFixed(2) + " V";
-                        <!-- document.getElementById("total_low_temperature").innerText = Math.min(...temperatures).toFixed(1) + " °C"; -->
+                        document.getElementById("total_low_cell_voltage").innerText = lower_cell_voltage.toFixed(2) + " V";
+                        document.getElementById("total_high_cell_voltage").innerText = upper_cell_voltage.toFixed(2) + " V";
                         document.getElementById("all_errors").innerText = all_errors.join("\n");
                         document.getElementById("total_high_temperature").innerText = Math.max(...temperatures).toFixed(1) + " °C";
                         let total_charge_td = document.getElementById("total_charge");

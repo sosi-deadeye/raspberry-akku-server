@@ -201,7 +201,7 @@ class FrameParser:
         (Frame.A, Control.Query, 0, 7): {"type": Data.QueryCellVoltage},
         (Frame.A, Control.Answer, 0, 7): {
             "type": Data.AnswerCellVoltage,
-            "constraints": lambda x: 0 < x[1] < 5,
+            "constraints": lambda x: 0 < x[1] < 0xFF,
         },
         (Frame.A, Control.Query, 1, 7): {"type": Data.QueryTemperature},
         (Frame.A, Control.Answer, 1, 7): {
@@ -271,7 +271,7 @@ class FrameParser:
         elif frame_type is Mode.AnswerSetOn:
             values = (True,)
         else:
-            raise TypeError("Fehlerhafte Antwort")
+            raise TypeError("Fehlerhafte Antwort", buffer)
         if "constraints" in self.frame_type and not self.frame_type["constraints"](
             values
         ):
@@ -374,6 +374,8 @@ class DataReader(Thread):
             "temperature": 0.0,
             "cell_voltages": [0.0] * self.cells,
             "error": 0,
+            "lower_cell_voltage": 0.0,
+            "upper_cell_voltage": 0.0,
         }
         self.db_update_interval: float = 60
         self.db_next_update: float = time.monotonic() + 120
@@ -410,6 +412,8 @@ class DataReader(Thread):
             self.current_values["charge"],
             self.current_values["temperature"],
             time.time(),
+            self.current_values["lower_cell_voltage"],
+            self.current_values["upper_cell_voltage"],
             *self.current_values["cell_voltages"],
         )
         set_current_values(current_data)
@@ -542,6 +546,8 @@ class DataReader(Thread):
         if time.monotonic() > self.db_next_update:
             log.info(f"Speichere Datensatz {self.row} in der Datenbank")
             current_values = self.current_values.copy()
+            del current_values["lower_cell_voltage"]
+            del current_values["upper_cell_voltage"]
             try:
                 current_mean = statistics.mean(self.stats_current)
             except statistics.StatisticsError:
@@ -568,7 +574,7 @@ class DataReader(Thread):
     def handle_queries(self) -> None:
         for frame_type, values in self.answer_queue.get_many():
             frame_type = frame_type["type"]
-            # log.debug(f"Antwort: {frame_type} | Werte: {values}")
+            log.debug(f"Antwort: {frame_type} | Werte: {values}")
             if frame_type is Data.AnswerCapacity:
                 self.current_values["capacity"] = values[0]
                 log.info(f"Kapazität: {values[0]}")
@@ -586,10 +592,15 @@ class DataReader(Thread):
                 self.current_values["temperature"] = values[0]
             elif frame_type is Data.AnswerCellVoltage:
                 cell_id, cell_voltage = values
-                try:
-                    self.current_values["cell_voltages"][cell_id] = cell_voltage
-                except IndexError:
-                    log.error(f"Zellen-Index {cell_id} ist ungültig")
+                if cell_id == 0xFE:
+                    self.current_values["lower_cell_voltage"] = values[1]
+                elif cell_id == 0xFF:
+                    self.current_values["upper_cell_voltage"] = values[1]
+                else:
+                    try:
+                        self.current_values["cell_voltages"][cell_id] = cell_voltage
+                    except IndexError:
+                        log.error(f"Zellen-Index {cell_id} ist ungültig")
             elif frame_type is Fault.AnswerErrorFlags:
                 self.handle_error(values[0])
             elif frame_type is Mode.AnswerSetOff:
@@ -1024,6 +1035,8 @@ QUERIES_LIVE: QueriesType = [
     (query_cell_temperature(), 60),
     *[(query_cell_voltage(n), 60) for n in range(4)],
     (query_error_flags(), 60),
+    (query_cell_voltage(0xFE), 10),
+    (query_cell_voltage(0xFF), 10),
 ]
 
 QUERIES_NORMAL: QueriesType = [
@@ -1033,19 +1046,72 @@ QUERIES_NORMAL: QueriesType = [
     (query_cell_temperature(), 5 * 60),
     *[(query_cell_voltage(n), 5 * 60) for n in range(4)],
     (query_error_flags(), 60),
+    (query_cell_voltage(0xFE), 5 * 60),
+    (query_cell_voltage(0xFF), 5 * 60),
 ]
+
+
+def map_queries(queries):
+    q = []
+    for qtype, delay in queries.items():
+        print(qtype, delay)
+        if qtype == "voltage":
+            q.append((query_voltage(), delay))
+        elif qtype == "current":
+            q.append((query_current(), delay))
+        elif qtype == "charge":
+            q.append((query_load(), delay))
+        elif qtype == "temperature":
+            q.append((query_cell_temperature(), delay))
+        elif qtype.startswith("cell_voltage_"):
+            cell = int(qtype.replace("cell_voltage_", ""))
+            q.append((query_cell_voltage(cell), delay))
+        elif qtype == "errorflags":
+            q.append((query_error_flags(), delay))
+        elif qtype == "lower_cell_voltage":
+            q.append((query_cell_voltage(0xFE) ,delay))
+        elif qtype == "upper_cell_voltage":
+            q.append((query_cell_voltage(0xFF), delay))
+    return q
+
+
+def get_queries(settings):
+    if "query_normal" in settings:
+        query_normal = map_queries(settings["query_normal"])
+    else:
+        query_normal = QUERIES_NORMAL
+
+    if "query_live" in settings:
+        query_live = map_queries(settings["query_live"])
+    else:
+        query_live = QUERIES_LIVE
+
+    return query_normal, query_live
 
 
 if __name__ == "__main__":
     args = parse_args()
     setup_gpio()
+    try:
+        with open("/media/data/settings.json") as fd:
+            global_settings = json.load(fd)
+    except (FileNotFoundError, ValueError):
+        global_settings = {}
+        charge_warn_limit = 15
+        charge_off_limit = 10
+    else:
+        charge_warn_limit = global_settings.get("charge_warn_limit", 15)
+        charge_off_limit = global_settings.get("charge_off_limit", 10)
+
     if args.d:
         log.setLevel(DEBUG)
+    else:
+        log.setLevel(INFO)
     if not args.p:
-        log.debug("Starte QueryScheduler")
-        query_scheduler = QueryScheduler(QUERIES_NORMAL, QUERIES_LIVE)
+        log.info("Starte QueryScheduler")
+        query_scheduler = QueryScheduler(*get_queries(global_settings))
 
-        log.debug("Starte seriellen Server")
+        log.info("Starte seriellen Server")
         serial_server = SerialServer(
             port="/dev/serial0",
             baudrate=1000,
@@ -1057,21 +1123,11 @@ if __name__ == "__main__":
         )
         serial_server.start()
 
-        log.debug("Starte Befehlsempfänger")
+        log.info("Starte Befehlsempfänger")
         command_server = CommandLoop(addr="tcp://127.0.0.1:4000")
         command_server.start()
 
-        log.debug("Starte Datenlogger")
-
-        try:
-            with open("/media/data/settings.json") as fd:
-                data = json.load(fd)
-        except (FileNotFoundError, ValueError):
-            charge_warn_limit = 15
-            charge_off_limit = 10
-        else:
-            charge_warn_limit = data.get("charge_warn_limit", 15)
-            charge_off_limit = data.get("charge_off_limit", 10)
+        log.info("Starte Datenlogger")
 
         data_logger = DataReader(
             serial_receiver_queue,

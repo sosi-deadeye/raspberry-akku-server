@@ -78,7 +78,7 @@ def set_values(values):
 
 
 FILE = "/tmp/current_values.bin"
-STRUCT = struct.Struct("<5i9f")
+STRUCT = struct.Struct("<5i11f")
 TOPICS = (
     "id",
     "row",
@@ -90,6 +90,8 @@ TOPICS = (
     "charge",
     "temperature",
     "timestamp",
+    "lower_cell_voltage",
+    "upper_cell_voltage",
 )
 MM_WRITER = MemoryMappedStruct(FILE, STRUCT, writer=True, create=True)
 MM_READER = MemoryMappedStruct(FILE, STRUCT, reader=True)
