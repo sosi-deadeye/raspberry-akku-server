@@ -219,6 +219,10 @@ async def dev_settings(
     live_upper_cell_voltage_active = "upper_cell_voltage" in settings["query_live"]
     live_upper_cell_voltage_delay = settings["query_live"].get("upper_cell_voltage", 0)
 
+    override_charge = settings.get("override_charge", False)
+    override_charge_threshold_voltage = settings.get("override_charge_threshold_voltage", 13.8)
+    override_charge_threshold_current = settings.get("override_charge_threshold_current", -1.0)
+
     return templates.TemplateResponse(
         "dev-settings.html",
         {
@@ -276,6 +280,9 @@ async def dev_settings(
             "live_lower_cell_voltage_delay": live_lower_cell_voltage_delay,
             "live_upper_cell_voltage_active": live_upper_cell_voltage_active,
             "live_upper_cell_voltage_delay": live_upper_cell_voltage_delay,
+            "override_charge": override_charge,
+            "override_charge_threshold_voltage": override_charge_threshold_voltage,
+            "override_charge_threshold_current": override_charge_threshold_current,
         },
     )
 
@@ -336,8 +343,11 @@ async def dev_settings_post(
     live_errorflags_delay: int = Form(...),
     live_lower_cell_voltage_active: bool = Form(False),
     live_lower_cell_voltage_delay: int = Form(...),
-    live_upper_cell_voltage_active: bool = Form(False),
+    live_upper_cell_voltage_active: bool = Form(...),
     live_upper_cell_voltage_delay: int = Form(...),
+    override_charge: bool = Form(False),
+    override_charge_threshold_voltage: float = Form(13.8),
+    override_charge_threshold_current: float = Form(-1.0),
 ):
     if not dev_password.check_password(credentials.password):
         raise UnauthorizedException
@@ -354,6 +364,9 @@ async def dev_settings_post(
     settings["reboot_delay_seconds"] = int(reboot_delay_days * 60 * 60 * 24)
     settings["charge_warn_limit"] = int(charge_warn_limit)
     settings["charge_off_limit"] = int(charge_off_limit)
+    settings["override_charge"] = override_charge
+    settings["override_charge_threshold_voltage"] = override_charge_threshold_voltage
+    settings["override_charge_threshold_current"] = override_charge_threshold_current
 
     if normal_voltage_active:
         settings["query_normal"]["voltage"] = normal_voltage_delay
@@ -537,6 +550,9 @@ async def dev_settings_post(
             "live_lower_cell_voltage_delay": live_lower_cell_voltage_delay,
             "live_upper_cell_voltage_active": live_upper_cell_voltage_active,
             "live_upper_cell_voltage_delay": live_upper_cell_voltage_delay,
+            "override_charge": override_charge,
+            "override_charge_threshold_voltage": override_charge_threshold_voltage,
+            "override_charge_threshold_current": override_charge_threshold_current,
         },
     )
 
@@ -1056,6 +1072,9 @@ if __name__ in ("__main__", "api"):
         "reboot_delay_seconds": 0,
         "charge_warn_limit": 15,
         "charge_off_limit": 10,
+        "override_charge": True,
+        "override_charge_threshold_voltage": 13.8,
+        "override_charge_threshold_current": -1.0,
         "query_normal": {
             "voltage": 60,
             "current": 10,

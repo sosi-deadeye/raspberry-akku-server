@@ -81,8 +81,8 @@
                 </tr>
                 <tr>
                     <td>Ladung</td>
-                    <td><input type="checkbox" name="normal_charge_active" {{ 'checked' if normal_charge_active else ''
-                        }}>
+                    <td><input type="checkbox"
+                               name="normal_charge_active" {{ 'checked' if normal_charge_active else '' }}>
                     </td>
                     <td><input type="number" name="normal_charge_delay" value="{{ normal_charge_delay }}"></td>
                 </tr>
@@ -185,8 +185,7 @@
                 </tr>
                 <tr>
                     <td>Ladung</td>
-                    <td><input type="checkbox" name="live_charge_active" {{ 'checked' if live_charge_active else ''
-                        }}>
+                    <td><input type="checkbox" name="live_charge_active" {{ 'checked' if live_charge_active else '' }}>
                     </td>
                     <td><input type="number" name="live_charge_delay" value="{{ live_charge_delay }}"></td>
                 </tr>
@@ -264,6 +263,24 @@
 
             <br/>
 
+            <p>
+                <input type="checkbox" name="override_charge" {{ 'checked' if
+                        override_charge else '' }}> Ladung 100 % wenn die Spannung größer als <input class="form"
+                                                                                                     type="number"
+                                                                                                     name="override_charge_threshold_voltage"
+                                                                                                     id="override_charge_threshold_voltage"
+                                                                                                     value="{{ override_charge_threshold_voltage }}"
+                                                                                                     step="0.01" size="4">
+                V ist und der Strom kleiner als <input class="form" type="number"
+                                                       name="override_charge_threshold_current"
+                                                       id="override_charge_threshold_current"
+                                                       value="{{ override_charge_threshold_current }}"
+                                                       step="1.0" size="3"> A ist.
+            </p>
+
+            <br/>
+            <br/>
+
             <div>
                 <h6>Betriebsmodi - Normal/Live</h6>
                 <div class="text-info">
@@ -285,11 +302,11 @@
 
                 <select class="form-control" id="interconnection" name="interconnection">
                     {% if interconnection == 'series_connection' %}
-                    <option value="series_connection" selected="selected">Reihenschaltung</option>
-                    <option value="parallel_connection">Parallelschaltung</option>
+                        <option value="series_connection" selected="selected">Reihenschaltung</option>
+                        <option value="parallel_connection">Parallelschaltung</option>
                     {% elif interconnection == 'parallel_connection' %}
-                    <option value="series_connection">Reihenschaltung</option>
-                    <option value="parallel_connection" selected="selected">Parallelschaltung</option>
+                        <option value="series_connection">Reihenschaltung</option>
+                        <option value="parallel_connection" selected="selected">Parallelschaltung</option>
                     {% endif %}
                 </select>
                 <label class="select-label" for="interconnection">Art der Verschaltung</label>
@@ -298,18 +315,18 @@
                 <h6>Software-Version</h6>
                 <select class="form-control" id="set_branch" name="set_branch">
                     {% if current_branch == 'master' %}
-                    <option value="master" selected="selected">master</option>
+                        <option value="master" selected="selected">master</option>
                     {% else %}
-                    <option value="master">master</option>
+                        <option value="master">master</option>
                     {% endif %}
                     {% for branch in branches %}
-                    {% if current_branch == branch %}
-                    <option value="{{ branch }}" selected="selected">{{ branch }}</option>
-                    {% elif branch == 'master' %}
-                    {{ continue }}
-                    {% else %}
-                    <option value="{{ branch }}">{{ branch }}</option>
-                    {% endif %}
+                        {% if current_branch == branch %}
+                            <option value="{{ branch }}" selected="selected">{{ branch }}</option>
+                        {% elif branch == 'master' %}
+                            {{ continue }}
+                        {% else %}
+                            <option value="{{ branch }}">{{ branch }}</option>
+                        {% endif %}
                     {% endfor %}
                 </select>
                 <label class="select-label" for="set_branch">Aktueller Branch</label>
