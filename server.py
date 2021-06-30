@@ -991,6 +991,13 @@ def query_cell_temperature() -> bytes:
     return make_query(Control.Query, service_bit=0x1, service_bits=7)
 
 
+def query_dimensions() -> bytes:
+    """
+    Query der Dimensionierung
+    """
+    return make_query(Control.Query, service_bit=0x0, service_bits=0b1001)
+
+
 def set_reset_alarm() -> bytes:
     """
     Query um den Alarm zurück zu setzen
