@@ -348,10 +348,23 @@
                             stats_tr.remove();
                         }
 
-                        document.getElementById("total_low_cell_voltage").innerText = lower_cell_voltage.toFixed(2) + " V";
-                        document.getElementById("total_high_cell_voltage").innerText = upper_cell_voltage.toFixed(2) + " V";
+                        if (lower_cell_voltage <= 0)
+                        {
+                            document.getElementById("total_low_cell_voltage").innerText = Math.min(...all_cell_voltages).toFixed(2) + " V";
+                        } else {
+                            document.getElementById("total_low_cell_voltage").innerText = lower_cell_voltage.toFixed(2) + " V";
+                        }
+
+                        if (upper_cell_voltage <= 0) {
+                            document.getElementById("total_high_cell_voltage").innerText = Math.max(...all_cell_voltages).toFixed(2) + " V";
+                        }
+                        else {
+                            document.getElementById("total_high_cell_voltage").innerText = upper_cell_voltage.toFixed(2) + " V";
+                        }
+
                         document.getElementById("all_errors").innerText = all_errors.join("\n");
                         document.getElementById("total_high_temperature").innerText = Math.max(...temperatures).toFixed(1) + " °C";
+
                         let total_charge_td = document.getElementById("total_charge");
                         let total_charge_rel_td = document.getElementById("total_charge_rel");
                         if (settings["interconnection"] === "parallel_connection") {
@@ -396,12 +409,20 @@
                 if (lower_upper_voltage) {
                     let cell_low_element = document.getElementById("cell_low");
                     if (cell_low_element) {
-                        cell_low_element.innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                        if (lower_cell_voltage <= 0) {
+                            cell_low_element.innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                        } else {
+                            cell_low_element.innerText = lower_cell_voltage.toFixed(2) + " V";
+                        }
                     }
 
                     let cell_high_element = document.getElementById("cell_high");
                     if (cell_high_element) {
-                        cell_high_element.innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+                        if (upper_cell_voltage <= 0) {
+                            cell_high_element.innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+                        } else {
+                            cell_high_element.innerText = upper_cell_voltage.toFixed(2) + " V";
+                        }
                     }
                 }
 
