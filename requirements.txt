@@ -7,7 +7,7 @@ colorzero==2.0
 cssselect==1.1.0
 cssutils==2.3.0
 emails==0.6
-fastapi[extra]==0.63.0
+fastapi==0.65.2
 gpiozero==1.6.2
 greenlet==1.0.0
 h11==0.12.0
