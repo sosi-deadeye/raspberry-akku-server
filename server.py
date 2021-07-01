@@ -589,10 +589,14 @@ class DataReader(Thread):
                 if global_settings.get("override_charge", False):
                     if (
                         self.current_values["voltage"]
-                        >= global_settings.get("override_charge_threshold_voltage", 13.8)
+                        >= global_settings.get(
+                            "override_charge_threshold_voltage", 13.8
+                        )
                     ) and (
                         self.current_values["current"]
-                        <= global_settings.get("override_charge_threshold_current", -1.0)
+                        <= global_settings.get(
+                            "override_charge_threshold_current", -1.0
+                        )
                     ):
                         self.current_values["charge"] = self.current_values["capacity"]
                         # gruß an Culti
