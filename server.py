@@ -586,7 +586,22 @@ class DataReader(Thread):
                 self.current_values["current"] = values[0]
                 self.stats_current.append(values[0])
             elif frame_type is Data.AnswerCharge:
-                self.current_values["charge"] = values[0]
+                if global_settings.get("override_charge", False):
+                    if (
+                        self.current_values["voltage"]
+                        >= global_settings.get("override_charge_threshold_voltage", 13.8)
+                    ) and (
+                        self.current_values["current"]
+                        <= global_settings.get("override_charge_threshold_current", -1.0)
+                    ):
+                        self.current_values["charge"] = self.current_values["capacity"]
+                        # gruß an Culti
+                    else:
+                        # schon wieder
+                        self.current_values["charge"] = values[0]
+                        # todo: call sourcery for help
+                else:
+                    self.current_values["charge"] = values[0]
                 self.stats_charge.append(values[0])
             elif frame_type is Data.AnswerTemperature:
                 self.current_values["temperature"] = values[0]
@@ -1076,7 +1091,7 @@ def map_queries(queries):
         elif qtype == "errorflags":
             q.append((query_error_flags(), delay))
         elif qtype == "lower_cell_voltage":
-            q.append((query_cell_voltage(0xFE) ,delay))
+            q.append((query_cell_voltage(0xFE), delay))
         elif qtype == "upper_cell_voltage":
             q.append((query_cell_voltage(0xFF), delay))
     return q

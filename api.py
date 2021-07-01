@@ -343,7 +343,7 @@ async def dev_settings_post(
     live_errorflags_delay: int = Form(...),
     live_lower_cell_voltage_active: bool = Form(False),
     live_lower_cell_voltage_delay: int = Form(...),
-    live_upper_cell_voltage_active: bool = Form(...),
+    live_upper_cell_voltage_active: bool = Form(False),
     live_upper_cell_voltage_delay: int = Form(...),
     override_charge: bool = Form(False),
     override_charge_threshold_voltage: float = Form(13.8),
