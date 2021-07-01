@@ -1,4 +1,4 @@
-# raspberry-akku-server 4.3.0 pre
+# raspberry-akku-server 4.3.2 RC1
 
 ## Dienste
 - api (Bereitstellung der Daten via http)
