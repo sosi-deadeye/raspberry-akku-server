@@ -138,21 +138,12 @@
                     </td>
                 </tr>
                 <tr>
-                    <td>Obere Zellspannung</td>
-                    <td><input type="checkbox" name="normal_upper_cell_voltage_active" {{ 'checked' if
-                        normal_upper_cell_voltage_active else '' }}>
+                    <td>Untere/Obere Zellspannung</td>
+                    <td><input type="checkbox" name="normal_lower_upper_cell_voltage_active" {{ 'checked' if
+                        normal_lower_upper_cell_voltage_active else '' }}>
                     </td>
-                    <td><input type="number" name="normal_upper_cell_voltage_delay"
-                               value="{{ normal_upper_cell_voltage_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Untere Zellspannung</td>
-                    <td><input type="checkbox" name="normal_lower_cell_voltage_active" {{ 'checked' if
-                        normal_lower_cell_voltage_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_lower_cell_voltage_delay"
-                               value="{{ normal_lower_cell_voltage_delay }}">
+                    <td><input type="number" name="normal_lower_upper_cell_voltage_delay"
+                               value="{{ normal_lower_upper_cell_voltage_delay }}">
                     </td>
                 </tr>
                 </tbody>
@@ -241,21 +232,12 @@
                     </td>
                 </tr>
                 <tr>
-                    <td>Obere Zellspannung</td>
-                    <td><input type="checkbox" name="live_upper_cell_voltage_active" {{ 'checked' if
-                        live_upper_cell_voltage_active else '' }}>
+                    <td>Untere/Obere Zellspannung</td>
+                    <td><input type="checkbox" name="live_lower_upper_cell_voltage_active" {{ 'checked' if
+                        live_lower_upper_cell_voltage_active else '' }}>
                     </td>
-                    <td><input type="number" name="live_upper_cell_voltage_delay"
-                               value="{{ live_upper_cell_voltage_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Untere Zellspannung</td>
-                    <td><input type="checkbox" name="live_lower_cell_voltage_active" {{ 'checked' if
-                        live_lower_cell_voltage_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_lower_cell_voltage_delay"
-                               value="{{ live_lower_cell_voltage_delay }}">
+                    <td><input type="number" name="live_lower_upper_cell_voltage_delay"
+                               value="{{ live_lower_upper_cell_voltage_delay }}">
                     </td>
                 </tr>
                 </tbody>
@@ -265,17 +247,9 @@
 
             <p>
                 <input type="checkbox" name="override_charge" {{ 'checked' if
-                        override_charge else '' }}> Ladung 100 % wenn die Spannung größer als <input class="form"
-                                                                                                     type="number"
-                                                                                                     name="override_charge_threshold_voltage"
-                                                                                                     id="override_charge_threshold_voltage"
-                                                                                                     value="{{ override_charge_threshold_voltage }}"
-                                                                                                     step="0.01" size="4">
-                V ist und der Strom kleiner als <input class="form" type="number"
-                                                       name="override_charge_threshold_current"
-                                                       id="override_charge_threshold_current"
-                                                       value="{{ override_charge_threshold_current }}"
-                                                       step="1.0" size="3"> A ist.
+                        override_charge else '' }}> Ladung skalieren.
+                                                    13.05 V - 14.20 V => 20% - 100% der Kapazität.
+                                                    Wenn das Kriterium nicht erfüllt ist, wird die Ladung vom Controller verwendet.
             </p>
 
             <br/>
@@ -360,6 +334,7 @@
                 <br/><br/>
 
                 <button type="submit" class="btn badge-primary btn-block">Speichern</button>
+                <a href="/api/restart-services" class="btn btn-danger btn-block">Neustart</a>
                 <a href="/api/update" class="btn badge-primary btn-block">Update</a>
                 <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
             </div>

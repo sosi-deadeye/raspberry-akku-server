@@ -139,7 +139,8 @@ class Data(Enum):
     AnswerCellVoltage = "Antwort Zellspannung"
     QueryTemperature = "Anfrage Zelltemperatur"
     AnswerTemperature = "Antwort Zelltemperatur"
-
+    QueryLowHighCellVoltage = "Niedrigste/Höchste Zellspannung abfragen"
+    AnswerLowHighCellVoltage = "Niedrigste/Höchste Zellspannung abfragen"
 
 class Reset(Enum):
     SetResetError = "Fehler zurücksetzen"
@@ -193,6 +194,10 @@ class FrameParser:
             "type": Data.AnswerCharge,
             "constraints": lambda x: -100 < x[0] < 10000,
         },
+
+        (Frame.A, Control.Query, 1, 10): {"type": Data.QueryLowHighCellVoltage},
+        (Frame.A, Control.Answer, 1, 10): {"type": Data.AnswerLowHighCellVoltage},
+
         (Frame.A, Control.Query, 1, 6): {"type": Data.QueryCapacity},
         (Frame.A, Control.Answer, 1, 6): {
             "type": Data.AnswerCapacity,
@@ -263,6 +268,9 @@ class FrameParser:
         elif frame_type is Data.AnswerCellVoltage:
             values = struct.unpack("<Bf", buffer[:5])
             buffer[:] = buffer[5:]
+        elif frame_type is Data.AnswerLowHighCellVoltage:
+            values = struct.unpack("<BfBf", buffer[:10])
+            buffer[:] = buffer[10:]
         elif frame_type is Fault.AnswerErrorFlags:
             values = struct.unpack("<H", buffer[:2])
             buffer[:] = buffer[2:]
@@ -587,23 +595,11 @@ class DataReader(Thread):
                 self.stats_current.append(values[0])
             elif frame_type is Data.AnswerCharge:
                 if global_settings.get("override_charge", False):
-                    if (
-                        self.current_values["voltage"]
-                        >= global_settings.get(
-                            "override_charge_threshold_voltage", 13.8
-                        )
-                    ) and (
-                        self.current_values["current"]
-                        <= global_settings.get(
-                            "override_charge_threshold_current", -1.0
-                        )
-                    ):
-                        self.current_values["charge"] = self.current_values["capacity"]
-                        # gruß an Culti
+                    calculated_charge = calculate_charge(self.current_values["voltage"])
+                    if calculated_charge is not None:
+                        self.current_values["charge"] = calculated_charge * self.current_values["capacity"]
                     else:
-                        # schon wieder
                         self.current_values["charge"] = values[0]
-                        # todo: call sourcery for help
                 else:
                     self.current_values["charge"] = values[0]
                 self.stats_charge.append(values[0])
@@ -611,15 +607,20 @@ class DataReader(Thread):
                 self.current_values["temperature"] = values[0]
             elif frame_type is Data.AnswerCellVoltage:
                 cell_id, cell_voltage = values
-                if cell_id == 0xFE:
-                    self.current_values["lower_cell_voltage"] = values[1]
-                elif cell_id == 0xFF:
-                    self.current_values["upper_cell_voltage"] = values[1]
-                else:
-                    try:
-                        self.current_values["cell_voltages"][cell_id] = cell_voltage
-                    except IndexError:
-                        log.error(f"Zellen-Index {cell_id} ist ungültig")
+                # if cell_id == 0xFE:
+                #     self.current_values["lower_cell_voltage"] = values[1]
+                # elif cell_id == 0xFF:
+                #     self.current_values["upper_cell_voltage"] = values[1]
+                # else:
+                try:
+                    self.current_values["cell_voltages"][cell_id] = cell_voltage
+                except IndexError:
+                    log.error(f"Zellen-Index {cell_id} ist ungültig")
+            elif frame_type is Data.AnswerLowHighCellVoltage:
+                low_id, low_voltage, high_id, high_voltage = values
+                log.info(f"{low_id:02d}:{low_voltage} V | {high_id:02d}: {high_voltage} V")
+                self.current_values["lower_cell_voltage"] = low_voltage
+                self.current_values["upper_cell_voltage"] = high_voltage
             elif frame_type is Fault.AnswerErrorFlags:
                 self.handle_error(values[0])
             elif frame_type is Mode.AnswerSetOff:
@@ -878,6 +879,33 @@ class SerialServer(Thread):
             time.sleep(0.1)
 
 
+def calculate_charge(voltage: float) -> Optional[float]:
+    """
+    Relative Ladung berechnen.
+
+    Für die Berechnung werden 2 lineare Kurven vorgegeben.
+    Es wird die raltive Ladung als float ausgegeben: 0.0 - 1.0
+    """
+    u1_min = 13.05
+    u1_max = 13.20
+
+    u2_min = u1_max
+    u2_max = 14.20
+
+    rel1_min = 0.20
+    rel1_max = 0.95
+
+    rel2_min = rel1_max
+    rel2_max = 1.0
+
+    if u1_min <= voltage <= u1_max:
+        return (voltage - u1_min) / (u1_max - u1_min) * (rel1_max - rel1_min) + rel1_min
+    elif u2_min < voltage <= u2_max:
+        return (voltage - u2_min) / (u2_max - u2_min) * (rel2_max - rel2_min) + rel2_min
+    else:
+        return None
+
+
 def send_one_query(query) -> None:
     """
     Eine Anfrage zur Warteschlange schicken
@@ -981,6 +1009,15 @@ def query_cell_voltage(cell_id) -> bytes:
     )
 
 
+def query_lower_upper_voltage() -> bytes:
+    """
+    Query um die untere/obere Zellspannung abzufragen.
+    """
+    return make_query(
+        Control.Query, service_bit=1, service_bits=10,
+    )
+
+
 def query_configuration() -> bytes:
     """
     Query um die Konfiguration des Akkus abzufragen
@@ -1061,8 +1098,6 @@ QUERIES_LIVE: QueriesType = [
     (query_cell_temperature(), 60),
     *[(query_cell_voltage(n), 10) for n in range(4)],
     (query_error_flags(), 60),
-    (query_cell_voltage(0xFE), 10),
-    (query_cell_voltage(0xFF), 10),
 ]
 
 QUERIES_NORMAL: QueriesType = [
@@ -1072,8 +1107,6 @@ QUERIES_NORMAL: QueriesType = [
     (query_cell_temperature(), 5 * 60),
     *[(query_cell_voltage(n), 5 * 60) for n in range(4)],
     (query_error_flags(), 60),
-    (query_cell_voltage(0xFE), 5 * 60),
-    (query_cell_voltage(0xFF), 5 * 60),
 ]
 
 
@@ -1094,10 +1127,8 @@ def map_queries(queries):
             q.append((query_cell_voltage(cell), delay))
         elif qtype == "errorflags":
             q.append((query_error_flags(), delay))
-        elif qtype == "lower_cell_voltage":
-            q.append((query_cell_voltage(0xFE), delay))
-        elif qtype == "upper_cell_voltage":
-            q.append((query_cell_voltage(0xFF), delay))
+        elif qtype == "lower_upper_cell_voltage":
+            q.append((query_lower_upper_voltage(), delay))
     return q
 
 
