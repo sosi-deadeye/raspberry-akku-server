@@ -1038,7 +1038,7 @@ if __name__ in ("__main__", "api"):
         "reboot_delay_seconds": 0,
         "charge_warn_limit": 15,
         "charge_off_limit": 10,
-        "override_charge": True,
+        "override_charge": False,
         "override_charge_threshold_voltage": 13.8,
         "override_charge_threshold_current": -1.0,
         "query_normal": {

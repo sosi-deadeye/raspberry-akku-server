@@ -138,7 +138,7 @@
                     </td>
                 </tr>
                 <tr>
-                    <td>Untere/Obere Zellspannung</td>
+                    <td>Untere/Obere Zellspannung (ab v7.3)</td>
                     <td><input type="checkbox" name="normal_lower_upper_cell_voltage_active" {{ 'checked' if
                         normal_lower_upper_cell_voltage_active else '' }}>
                     </td>
@@ -232,7 +232,7 @@
                     </td>
                 </tr>
                 <tr>
-                    <td>Untere/Obere Zellspannung</td>
+                    <td>Untere/Obere Zellspannung (ab v7.3)</td>
                     <td><input type="checkbox" name="live_lower_upper_cell_voltage_active" {{ 'checked' if
                         live_lower_upper_cell_voltage_active else '' }}>
                     </td>
@@ -247,7 +247,7 @@
 
             <p>
                 <input type="checkbox" name="override_charge" {{ 'checked' if
-                        override_charge else '' }}> Ladung skalieren.
+                        override_charge else '' }}> Ladung skalieren. (Experimentelles Feature)
                                                     13.05 V - 14.20 V => 20% - 100% der Kapazität.
                                                     Wenn das Kriterium nicht erfüllt ist, wird die Ladung vom Controller verwendet.
             </p>
