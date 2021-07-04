@@ -315,7 +315,6 @@ class FrameParser:
             return cls(0, 0, 0, 0)
         if isinstance(value, int):
             value = bytes(bytearray([value]))
-            # print(hex(value[0]))
         try:
             data = value[0]
             frame = Frame(data & 0x1)
@@ -381,7 +380,7 @@ class DataReader(Thread):
             "charge": 0.0,
             "capacity": 0,
             "temperature": 0.0,
-            "cell_voltages": [0.0] * 64,
+            "cell_voltages": [0.0] * self.cells,
             "error": 0,
             "lower_cell_voltage": 0.0,
             "upper_cell_voltage": 0.0,
@@ -423,7 +422,7 @@ class DataReader(Thread):
             time.time(),
             self.current_values["lower_cell_voltage"],
             self.current_values["upper_cell_voltage"],
-            *self.current_values["cell_voltages"][:4],
+            *self.current_values["cell_voltages"],
         )
         set_current_values(current_data)
 
@@ -865,7 +864,6 @@ class SerialServer(Thread):
             queries = self.sender_queue.get_many()
             if queries:
                 with self.serial_handshake:
-                    # print("Send:", queries)
                     self.serial.write(b"".join(queries))
                     # self.serial.flush()
                     for query in queries:
