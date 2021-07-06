@@ -1,4 +1,4 @@
-# raspberry-akku-server 4.3.2 RC1
+# raspberry-akku-server 4.3.2 RC2
 
 ## Dienste
 - api (Bereitstellung der Daten via http)
@@ -14,4 +14,3 @@ Zum aktivieren des venv:
 
 source /home/server/venv/bin/activate
 
-Backup-Images können hier heruntergeladen werden: https://archive.server101.icu/.k-akku/
