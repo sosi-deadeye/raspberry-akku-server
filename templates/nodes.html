@@ -316,15 +316,24 @@
 
                     let upper_cell_voltage;
                     let lower_cell_voltage;
+
                     upper_cell_voltage = document.getElementById("upper_cell_voltage_" + i);
                     lower_cell_voltage = document.getElementById("lower_cell_voltage_" + i);
+
                     if (upper_cell_voltage) {
-                        // upper_cell_voltage.innerText = Math.max(...cell_voltages).toFixed(2) + " V";
-                        upper_cell_voltage.innerText = current_lower_cell_voltage.toFixed(2) + " V";
+                        if (current_upper_cell_voltage !== 0) {
+                            upper_cell_voltage.innerText = current_upper_cell_voltage.toFixed(2) + " V";
+                        } else {
+                            upper_cell_voltage.innerText = Math.max(...cell_voltages).toFixed(2) + " V";
+                        }
                     }
+
                     if (lower_cell_voltage) {
-                        // lower_cell_voltage.innerText = Math.min(...cell_voltages).toFixed(2) + " V";
-                        lower_cell_voltage.innerText = current_upper_cell_voltage.toFixed(2) + " V";
+                        if (current_lower_cell_voltage !== 0) {
+                            lower_cell_voltage.innerText = current_lower_cell_voltage.toFixed(2) + " V";
+                        } else {
+                            lower_cell_voltage.innerText = Math.min(...cell_voltages).toFixed(2) + " V";
+                        }
                     }
 
                     let cell_idx = 1;
