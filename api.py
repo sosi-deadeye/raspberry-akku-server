@@ -51,7 +51,7 @@ dev_settings_file = Path("/media/data/settings.json")
 
 app = FastAPI(
     title="LiFePo4-Akku",
-    version="4.3.2 RC2",
+    version="4.3.3",
     description="Rest API für des LiFePo4-Akkus",
     docs_url=None,
     redoc_url=None,

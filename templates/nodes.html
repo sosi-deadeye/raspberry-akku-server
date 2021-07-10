@@ -97,7 +97,7 @@
                 id="{{ 'temperature_{}'.format(loop.index) }}">#
             </td>
         </tr>
-        {% if total_voltage > 16 %}
+        {% if total_voltage > 16  or data['payload']['lower_cell_voltage'] != 0 %}
         <tr id="tr_upper_cell_voltage_{{ loop.index }}">
             <td>Obere Zellspannung</td>
             <td class="text-right"

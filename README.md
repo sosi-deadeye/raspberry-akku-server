@@ -1,4 +1,6 @@
-# raspberry-akku-server 4.3.2 RC2
+# raspberry-akku-server
+- Controller-Version: 7.3
+- Software-Version: 4.3.3
 
 ## Dienste
 - api (Bereitstellung der Daten via http)
