@@ -1033,7 +1033,7 @@ if __name__ in ("__main__", "api"):
     settings_default = {
         "without_charge": False,
         "without_current": False,
-        "without_stats": False,
+        "without_stats": True,
         "interconnection": "parallel_connection",
         "reboot_delay_seconds": 0,
         "charge_warn_limit": 15,
