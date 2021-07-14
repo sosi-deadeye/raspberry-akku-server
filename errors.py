@@ -21,7 +21,7 @@ error_mapping = {
         # 0x0F00: error("eError_CurrentErrorMask", "Stromfehler", "Maske für Stromfehler"),
         0x1000: error("eError_ChargeTempLimit", "Temperaturfehler", "Akku hat Ladetemperatur unterschritten (nur noch Entladung möglich)", "Ladetemperatur unterschritten"),
         0x2000: error("eError_UnderTemp", "Temperaturfehler", "Akku untere Temperaturgrenze unterschritten (Ladung abgeschaltet)", "Ladetemperatur zu niedrig"),
-        0x4000: error("eError_OverTemp", "Temperaturfehler", "Akku obere Temperaturgrenze überschritten (Abschaltung)", "Zelltemperatur zu hoch"),
+        0x4000: error("eError_OverTemp", "Temperaturfehler", "Akku obere Temperaturgrenze überschritten (Abschaltung)", "Übertemperaturabschaltung"),
         # 0x7000: error("eError_TempErrorMask", "Temperaturfehler", "Maske für Temperaturfehler"),
         0x8000: error("eError_ExtBatteryError", "Fehler Ext. Akku", "Fehler externer Akku (nicht genauer spezifiziert)", "Externer Akku Fehler"),
     }
