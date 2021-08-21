@@ -9,12 +9,13 @@ import time
 from argparse import ArgumentParser
 from collections import deque
 from enum import Enum, IntEnum
+from itertools import islice
 from logging import DEBUG, INFO, basicConfig, getLogger
 from queue import Empty as QueueEmpty
 from queue import PriorityQueue, Queue
 from subprocess import call
 from threading import Thread
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import RPi.GPIO as GPIO
 import serial
@@ -142,6 +143,7 @@ class Data(Enum):
     QueryLowHighCellVoltage = "Niedrigste/Höchste Zellspannung abfragen"
     AnswerLowHighCellVoltage = "Niedrigste/Höchste Zellspannung abfragen"
 
+
 class Reset(Enum):
     SetResetError = "Fehler zurücksetzen"
     SetResetAnswer = "Antwort Fehler zurücksetzen"
@@ -194,10 +196,8 @@ class FrameParser:
             "type": Data.AnswerCharge,
             "constraints": lambda x: -100 < x[0] < 10000,
         },
-
         (Frame.A, Control.Query, 1, 10): {"type": Data.QueryLowHighCellVoltage},
         (Frame.A, Control.Answer, 1, 10): {"type": Data.AnswerLowHighCellVoltage},
-
         (Frame.A, Control.Query, 1, 6): {"type": Data.QueryCapacity},
         (Frame.A, Control.Answer, 1, 6): {
             "type": Data.AnswerCapacity,
@@ -344,7 +344,64 @@ class FrameParser:
         )
 
 
+class Property:
+    """
+    Getter/Setter class which must be set multiple times
+    with an equal object to fit the maxlen.
+    A timeout make it possible to remove too old objects.
+
+    The condition is only fulfilled if:
+        - all objects are equal
+        - the time delta between the objects must be lesser than `timeout`
+
+    If the condition is not fulfilled, the dtype() will return instead.
+    """
+
+    def __init__(self, maxlen: int = 2, timeout: float = 2, dtype: Callable = str):
+        self._instances = {}
+        self._maxlen = maxlen
+        self.timeout = timeout
+        self.dtype = dtype
+
+    def _get_diffs(self, instance):
+        return [t2 - t1 for (_, t1), (_, t2) in self._zip_pairwise(instance)]
+
+    def _zip_pairwise(self, instance):
+        data = self._instances[instance]
+        return zip(islice(data, 0, None), islice(data, 1, None))
+
+    def _remove_old(self, instance):
+        diffs = self._get_diffs(instance)
+        for idx, diff in enumerate(diffs):
+            if diff > self.timeout:
+                del self._instances[instance][idx]
+
+    def _all_eq(self, instance):
+        return all(a == b for (a, _), (b, _) in self._zip_pairwise(instance))
+
+    def __get__(self, obj, objtype=None):
+        if obj in self._instances:
+
+            data = self._instances[obj]
+
+            if len(data) == self._maxlen and self._all_eq(obj):
+                return data[-1][0]
+
+        return self.dtype()
+
+    def __set__(self, obj, value):
+        # log.info(f"Property from {obj} set to {value}")
+        if obj not in self._instances:
+            self._instances[obj] = deque(maxlen=self._maxlen)
+
+        self._instances[obj].append((value, time.monotonic()))
+        self._remove_old(obj)
+
+
 class DataReader(Thread):
+    last_error = Property(2, 0.8, str)
+    last_error_flags = Property(2, 0.8, int)
+
     def __init__(
         self,
         answer_queue: ManyQueue,
@@ -361,8 +418,6 @@ class DataReader(Thread):
         self.session = Session()
         self.cycle: int = set_cycle(self.session)
         self.last_answer: float = 0.0
-        self.last_error: int = 0
-        self.last_error_flags: Optional[int] = None
         self.error_topics: list = [
             0x0010,
             0x0020,
@@ -401,9 +456,9 @@ class DataReader(Thread):
         """
         if error_flags != self.last_error_flags:
             self.last_error_flags = error_flags
-            self.current_values["error"] = error_flags
-            self.session.add(Error(row=self.row, cycle=self.cycle, error=error_flags))
-            error_text = errors.get_msg(error_flags, err_topics=self.error_topics)
+            self.current_values["error"] = self.last_error_flags
+            self.session.add(Error(row=self.row, cycle=self.cycle, error=self.last_error_flags))
+            error_text = errors.get_msg(self.last_error_flags, err_topics=self.error_topics)
             if error_text and error_text != self.last_error:
                 self.last_error = error_text
                 Thread(target=notify.send_report, args=(error_text,)).start()
@@ -597,7 +652,9 @@ class DataReader(Thread):
                 if global_settings.get("override_charge", False):
                     calculated_charge = calculate_charge(self.current_values["voltage"])
                     if calculated_charge is not None:
-                        self.current_values["charge"] = calculated_charge * self.current_values["capacity"]
+                        self.current_values["charge"] = (
+                            calculated_charge * self.current_values["capacity"]
+                        )
                     else:
                         self.current_values["charge"] = values[0]
                 else:
@@ -618,7 +675,9 @@ class DataReader(Thread):
                     log.error(f"Zellen-Index {cell_id} ist ungültig")
             elif frame_type is Data.AnswerLowHighCellVoltage:
                 low_id, low_voltage, high_id, high_voltage = values
-                log.info(f"{low_id:02d}:{low_voltage} V | {high_id:02d}: {high_voltage} V")
+                log.info(
+                    f"{low_id:02d}:{low_voltage} V | {high_id:02d}: {high_voltage} V"
+                )
                 self.current_values["lower_cell_voltage"] = low_voltage
                 self.current_values["upper_cell_voltage"] = high_voltage
             elif frame_type is Fault.AnswerErrorFlags:
@@ -1014,7 +1073,9 @@ def query_lower_upper_voltage() -> bytes:
     Query um die untere/obere Zellspannung abzufragen.
     """
     return make_query(
-        Control.Query, service_bit=1, service_bits=10,
+        Control.Query,
+        service_bit=1,
+        service_bits=10,
     )
 
 
