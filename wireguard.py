@@ -24,6 +24,7 @@ PrivateKey = {private}
 PublicKey = n4ipJGlJ7YZ2X+jDmqQPXTwBRJmC+4mZ82Tbm8a5hg0=
 AllowedIPs = 10.10.10.0/24
 Endpoint = 5.9.16.40:51820
+PersistentKeepalive = 20
 """.lstrip()
 
 email_template = """
