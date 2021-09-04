@@ -135,7 +135,7 @@
                     <button id="on" type="button" class="btn btn-success btn-block btn-lg"><small>Akku Ein</small>
                     </button>
                 </td>
-                <td colspan=3>
+{#                <td colspan=3>
                     <button id="off" type="button" class="btn btn-danger btn-block btn-lg"><small>Akku Aus</small>
                     </button>
                 </td>
@@ -149,7 +149,7 @@
                     <button id="ack" type="button" class="btn btn-warning btn-block btn-lg"><small>Meldung Reset</small>
                     </button>
                 </td>
-            </tr>
+            </tr>#}
             <tr>
                 <td colspan=3>
                     <button id="shutdown" type="button" class="btn btn-dark btn-block btn-lg"><small>WLAN
@@ -598,11 +598,11 @@
 
     if (document.getElementById("buttons1")) {
         register_event("/api/on", "on", "Akku wird eingeschaltet", "", "Kein Erfolg", 2000);
-        register_event("/api/off", "off", "Akku wird ausgeschaltet", "", "Kein Erfolg", 2000);
+        // register_event("/api/off", "off", "Akku wird ausgeschaltet", "", "Kein Erfolg", 2000);
     }
     if (document.getElementById("buttons2")) {
-        register_event("/api/reset", "reset", "Akku wird zurückgesetzt.", "", "Kein Erfolg", 5000);
-        register_event("/api/ack", "ack", "Meldung wird quittiert.", "", "Kein Erfolg", 1000);
+        // register_event("/api/reset", "reset", "Akku wird zurückgesetzt.", "", "Kein Erfolg", 5000);
+        // register_event("/api/ack", "ack", "Meldung wird quittiert.", "", "Kein Erfolg", 1000);
     }
     register_event("/api/shutdown", "shutdown", "WLAN-Modul wird heruntergefahren.", "Die WLAN-Verbindung wird abgebrochen.\n\nZum Starten des WLAN-Moduls, den Knopf erneut drücken.", "Kein Erfolg", 5000);
 </script>

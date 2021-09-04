@@ -457,8 +457,12 @@ class DataReader(Thread):
         if error_flags != self.last_error_flags:
             self.last_error_flags = error_flags
             self.current_values["error"] = self.last_error_flags
-            self.session.add(Error(row=self.row, cycle=self.cycle, error=self.last_error_flags))
-            error_text = errors.get_msg(self.last_error_flags, err_topics=self.error_topics)
+            self.session.add(
+                Error(row=self.row, cycle=self.cycle, error=self.last_error_flags)
+            )
+            error_text = errors.get_msg(
+                self.last_error_flags, err_topics=self.error_topics
+            )
             if error_text and error_text != self.last_error:
                 self.last_error = error_text
                 Thread(target=notify.send_report, args=(error_text,)).start()
@@ -781,18 +785,13 @@ class CommandLoop(Thread):
     def run(self):
         while True:
             topic, cmd = self.sock.recv_multipart()
+
+            # nur Einschalten und Live-Modus
+            # Ausschalten, Reset und ACK werden ignoriert.
+
             if cmd == Commands.on.value:
                 log.info("Set Battery on")
                 send_command(set_battery_on())
-            elif cmd == Commands.off.value:
-                log.info("Set Battery off")
-                send_command(set_battery_off())
-            elif cmd == Commands.reset.value:
-                log.info("Reset battery")
-                send_command(set_reset_battery())
-            elif cmd == Commands.ack.value:
-                log.info("Send Ack")
-                send_command(set_reset_alarm())
             elif cmd == Commands.live.value:
                 query_scheduler.live()
 
