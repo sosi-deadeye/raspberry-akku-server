@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from subprocess import call
-from typing import List, Optional  # Literal
+from typing import List, Optional
 
 import requests
 import zmq
@@ -50,7 +50,7 @@ dev_settings_file = Path("/media/data/settings.json")
 
 app = FastAPI(
     title="LiFePo4-Akku",
-    version="4.3.5",
+    version="4.3.6",
     description="Rest API für des LiFePo4-Akkus",
     docs_url=None,
     redoc_url=None,
