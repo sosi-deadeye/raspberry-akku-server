@@ -30,6 +30,12 @@
                 <label class="form-check-label" for="without_current">Anzeige des Stroms unterdrücken</label>
             </div>
 
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="lower_upper_voltage" id="lower_upper_voltage"
+                       value="lower_upper_voltage" {{ 'checked' if lower_upper_voltage else '' }}>
+                <label class="form-check-label" for="lower_upper_voltage">Nur Untere/Obere Zellspannung anzeigen. Nicht vergessen die Abfragen zu aktivieren</label>
+            </div>
+
             <br/>
 
             <div class="form">

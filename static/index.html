@@ -300,7 +300,7 @@
 
                             if (first_run) {
                                 first_run = false;
-                                if (voltage > 15) {
+                                if (settings["lower_upper_voltage"]) {
                                     lower_upper_voltage = true;
                                     for (let tr_cell_idx = 0; tr_cell_idx < 4; tr_cell_idx++) {
                                         tr_id = "tr_cell_" + tr_cell_idx;
