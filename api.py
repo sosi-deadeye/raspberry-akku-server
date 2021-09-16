@@ -172,60 +172,28 @@ async def dev_settings(
     if reboot_delay_seconds is None:
         reboot_delay_seconds = 0
 
-    normal_voltage_active = "voltage" in settings["query_normal"]
     normal_voltage_delay = settings["query_normal"].get("voltage", 0)
-    normal_current_active = "current" in settings["query_normal"]
     normal_current_delay = settings["query_normal"].get("current", 0)
-    normal_charge_active = "charge" in settings["query_normal"]
     normal_charge_delay = settings["query_normal"].get("charge", 0)
-    normal_temperature_active = "temperature" in settings["query_normal"]
     normal_temperature_delay = settings["query_normal"].get("temperature", 0)
-    normal_errorflags_active = "errorflags" in settings["query_normal"]
     normal_errorflags_delay = settings["query_normal"].get("errorflags", 0)
-    normal_cell_voltage_0_active = "cell_voltage_0" in settings["query_normal"]
-    normal_cell_voltage_0_delay = settings["query_normal"].get("cell_voltage_0", 0)
-    normal_cell_voltage_1_active = "cell_voltage_1" in settings["query_normal"]
-    normal_cell_voltage_1_delay = settings["query_normal"].get("cell_voltage_1", 0)
-    normal_cell_voltage_2_active = "cell_voltage_2" in settings["query_normal"]
-    normal_cell_voltage_2_delay = settings["query_normal"].get("cell_voltage_2", 0)
-    normal_cell_voltage_3_active = "cell_voltage_3" in settings["query_normal"]
-    normal_cell_voltage_3_delay = settings["query_normal"].get("cell_voltage_3", 0)
-    normal_lower_upper_cell_voltage_active = (
-        "lower_upper_cell_voltage" in settings["query_normal"]
-    )
+    normal_cell_voltage_x_delay = settings["query_normal"].get("cell_voltage_0", 0)
     normal_lower_upper_cell_voltage_delay = settings["query_normal"].get(
         "lower_upper_cell_voltage", 0
     )
 
-    live_voltage_active = "voltage" in settings["query_live"]
     live_voltage_delay = settings["query_live"].get("voltage", 0)
-    live_current_active = "current" in settings["query_live"]
     live_current_delay = settings["query_live"].get("current", 0)
-    live_charge_active = "charge" in settings["query_live"]
     live_charge_delay = settings["query_live"].get("charge", 0)
-    live_temperature_active = "temperature" in settings["query_live"]
     live_temperature_delay = settings["query_live"].get("temperature", 0)
-    live_errorflags_active = "errorflags" in settings["query_live"]
     live_errorflags_delay = settings["query_live"].get("errorflags", 0)
-    live_cell_voltage_0_active = "cell_voltage_0" in settings["query_live"]
-    live_cell_voltage_0_delay = settings["query_live"].get("cell_voltage_0", 0)
-    live_cell_voltage_1_active = "cell_voltage_1" in settings["query_live"]
-    live_cell_voltage_1_delay = settings["query_live"].get("cell_voltage_1", 0)
-    live_cell_voltage_2_active = "cell_voltage_2" in settings["query_live"]
-    live_cell_voltage_2_delay = settings["query_live"].get("cell_voltage_2", 0)
-    live_cell_voltage_3_active = "cell_voltage_3" in settings["query_live"]
-    live_cell_voltage_3_delay = settings["query_live"].get("cell_voltage_3", 0)
-    live_lower_upper_cell_voltage_active = (
-        "lower_upper_cell_voltage" in settings["query_live"]
-    )
+    live_cell_voltage_x_delay = settings["query_live"].get("cell_voltage_x", 0)
     live_lower_upper_cell_voltage_delay = settings["query_live"].get(
         "lower_upper_cell_voltage", 0
     )
 
     override_charge = settings.get("override_charge", False)
     lower_upper_voltage = settings.get("lower_upper_voltage", False)
-    # override_charge_threshold_voltage = settings.get("override_charge_threshold_voltage", 13.8)
-    # override_charge_threshold_current = settings.get("override_charge_threshold_current", -1.0)
 
     return templates.TemplateResponse(
         "dev-settings.html",
@@ -240,45 +208,19 @@ async def dev_settings(
             "reboot_delay_days": int(reboot_delay_seconds / 60 / 60 / 24),
             "charge_warn_limit": settings["charge_warn_limit"],
             "charge_off_limit": settings["charge_off_limit"],
-            "normal_voltage_active": normal_voltage_active,
-            "normal_current_active": normal_current_active,
-            "normal_charge_active": normal_charge_active,
-            "normal_temperature_active": normal_temperature_active,
-            "normal_cell_voltage_0_active": normal_cell_voltage_0_active,
-            "normal_cell_voltage_1_active": normal_cell_voltage_1_active,
-            "normal_cell_voltage_2_active": normal_cell_voltage_2_active,
-            "normal_cell_voltage_3_active": normal_cell_voltage_3_active,
-            "normal_errorflags_active": normal_errorflags_active,
             "normal_voltage_delay": normal_voltage_delay,
             "normal_current_delay": normal_current_delay,
             "normal_charge_delay": normal_charge_delay,
             "normal_temperature_delay": normal_temperature_delay,
-            "normal_cell_voltage_0_delay": normal_cell_voltage_0_delay,
-            "normal_cell_voltage_1_delay": normal_cell_voltage_1_delay,
-            "normal_cell_voltage_2_delay": normal_cell_voltage_2_delay,
-            "normal_cell_voltage_3_delay": normal_cell_voltage_3_delay,
+            "normal_cell_voltage_x_delay": normal_cell_voltage_x_delay,
             "normal_errorflags_delay": normal_errorflags_delay,
-            "normal_lower_upper_cell_voltage_active": normal_lower_upper_cell_voltage_active,
             "normal_lower_upper_cell_voltage_delay": normal_lower_upper_cell_voltage_delay,
-            "live_voltage_active": live_voltage_active,
-            "live_current_active": live_current_active,
-            "live_charge_active": live_charge_active,
-            "live_temperature_active": live_temperature_active,
-            "live_cell_voltage_0_active": live_cell_voltage_0_active,
-            "live_cell_voltage_1_active": live_cell_voltage_1_active,
-            "live_cell_voltage_2_active": live_cell_voltage_2_active,
-            "live_cell_voltage_3_active": live_cell_voltage_3_active,
-            "live_errorflags_active": live_errorflags_active,
             "live_voltage_delay": live_voltage_delay,
             "live_current_delay": live_current_delay,
             "live_charge_delay": live_charge_delay,
             "live_temperature_delay": live_temperature_delay,
-            "live_cell_voltage_0_delay": live_cell_voltage_0_delay,
-            "live_cell_voltage_1_delay": live_cell_voltage_1_delay,
-            "live_cell_voltage_2_delay": live_cell_voltage_2_delay,
-            "live_cell_voltage_3_delay": live_cell_voltage_3_delay,
+            "live_cell_voltage_x_delay": live_cell_voltage_x_delay,
             "live_errorflags_delay": live_errorflags_delay,
-            "live_lower_upper_cell_voltage_active": live_lower_upper_cell_voltage_active,
             "live_lower_upper_cell_voltage_delay": live_lower_upper_cell_voltage_delay,
             "override_charge": override_charge,
             "lower_upper_voltage": lower_upper_voltage,
@@ -300,45 +242,19 @@ async def dev_settings_post(
     charge_warn_limit: int = Form(...),
     charge_off_limit: int = Form(...),
     upload_logo: UploadFile = File(...),
-    normal_voltage_active: bool = Form(False),
-    normal_current_active: bool = Form(False),
-    normal_charge_active: bool = Form(False),
-    normal_temperature_active: bool = Form(False),
-    normal_cell_voltage_0_active: bool = Form(False),
-    normal_cell_voltage_1_active: bool = Form(False),
-    normal_cell_voltage_2_active: bool = Form(False),
-    normal_cell_voltage_3_active: bool = Form(False),
-    normal_errorflags_active: bool = Form(False),
     normal_voltage_delay: int = Form(...),
     normal_current_delay: int = Form(...),
     normal_charge_delay: int = Form(...),
     normal_temperature_delay: int = Form(...),
-    normal_cell_voltage_0_delay: int = Form(...),
-    normal_cell_voltage_1_delay: int = Form(...),
-    normal_cell_voltage_2_delay: int = Form(...),
-    normal_cell_voltage_3_delay: int = Form(...),
+    normal_cell_voltage_x_delay: int = Form(...),
     normal_errorflags_delay: int = Form(...),
-    normal_lower_upper_cell_voltage_active: bool = Form(False),
     normal_lower_upper_cell_voltage_delay: int = Form(...),
-    live_voltage_active: bool = Form(False),
-    live_current_active: bool = Form(False),
-    live_charge_active: bool = Form(False),
-    live_temperature_active: bool = Form(False),
-    live_cell_voltage_0_active: bool = Form(False),
-    live_cell_voltage_1_active: bool = Form(False),
-    live_cell_voltage_2_active: bool = Form(False),
-    live_cell_voltage_3_active: bool = Form(False),
-    live_errorflags_active: bool = Form(False),
     live_voltage_delay: int = Form(...),
     live_current_delay: int = Form(...),
     live_charge_delay: int = Form(...),
     live_temperature_delay: int = Form(...),
-    live_cell_voltage_0_delay: int = Form(...),
-    live_cell_voltage_1_delay: int = Form(...),
-    live_cell_voltage_2_delay: int = Form(...),
-    live_cell_voltage_3_delay: int = Form(...),
+    live_cell_voltage_x_delay: int = Form(...),
     live_errorflags_delay: int = Form(...),
-    live_lower_upper_cell_voltage_active: bool = Form(False),
     live_lower_upper_cell_voltage_delay: int = Form(...),
     override_charge: bool = Form(False),
     lower_upper_voltage: str = Form(""),
@@ -361,104 +277,84 @@ async def dev_settings_post(
     settings["override_charge"] = override_charge
     settings["lower_upper_voltage"] = bool(lower_upper_voltage.strip())
 
-    if normal_voltage_active:
+    if normal_voltage_delay > 0:
         settings["query_normal"]["voltage"] = normal_voltage_delay
     elif "voltage" in settings["query_normal"]:
         del settings["query_normal"]["voltage"]
 
-    if normal_current_active:
+    if normal_current_delay > 0:
         settings["query_normal"]["current"] = normal_current_delay
     elif "current" in settings["query_normal"]:
         del settings["query_normal"]["current"]
 
-    if normal_charge_active:
+    if normal_charge_delay > 0:
         settings["query_normal"]["charge"] = normal_charge_delay
     elif "charge" in settings["query_normal"]:
         del settings["query_normal"]["charge"]
 
-    if normal_temperature_active:
+    if normal_temperature_delay > 0:
         settings["query_normal"]["temperature"] = normal_temperature_delay
     elif "temperature" in settings["query_normal"]:
         del settings["query_normal"]["temperature"]
 
-    if normal_errorflags_active:
+    if normal_errorflags_delay > 0:
         settings["query_normal"]["errorflags"] = normal_errorflags_delay
     elif "errorflags" in settings["query_normal"]:
         del settings["query_normal"]["errorflags"]
 
-    if normal_cell_voltage_0_active:
-        settings["query_normal"]["cell_voltage_0"] = normal_cell_voltage_0_delay
-    elif "cell_voltage_0" in settings["query_normal"]:
-        del settings["query_normal"]["cell_voltage_0"]
+    if normal_cell_voltage_x_delay > 0:
+        settings["query_normal"]["cell_voltage_0"] = normal_cell_voltage_x_delay
+        settings["query_normal"]["cell_voltage_1"] = normal_cell_voltage_x_delay
+        settings["query_normal"]["cell_voltage_2"] = normal_cell_voltage_x_delay
+        settings["query_normal"]["cell_voltage_3"] = normal_cell_voltage_x_delay
+    else:
+        for key in settings["query_normal"].copy():
+            if key.startswith("cell_voltage_"):
+                del settings["query_normal"][key]
 
-    if normal_cell_voltage_1_active:
-        settings["query_normal"]["cell_voltage_1"] = normal_cell_voltage_1_delay
-    elif "cell_voltage_1" in settings["query_normal"]:
-        del settings["query_normal"]["cell_voltage_1"]
-
-    if normal_cell_voltage_2_active:
-        settings["query_normal"]["cell_voltage_2"] = normal_cell_voltage_2_delay
-    elif "cell_voltage_2" in settings["query_normal"]:
-        del settings["query_normal"]["cell_voltage_2"]
-
-    if normal_cell_voltage_3_active:
-        settings["query_normal"]["cell_voltage_3"] = normal_cell_voltage_3_delay
-    elif "cell_voltage_3" in settings["query_normal"]:
-        del settings["query_normal"]["cell_voltage_3"]
-
-    if normal_lower_upper_cell_voltage_active:
+    if normal_lower_upper_cell_voltage_delay > 0:
         settings["query_normal"][
             "lower_upper_cell_voltage"
         ] = normal_lower_upper_cell_voltage_delay
     elif "lower_upper_cell_voltage" in settings["query_normal"]:
         del settings["query_normal"]["lower_upper_cell_voltage"]
 
-    if live_voltage_active:
+    if live_voltage_delay > 0:
         settings["query_live"]["voltage"] = live_voltage_delay
     elif "voltage" in settings["query_live"]:
         del settings["query_live"]["voltage"]
 
-    if live_current_active:
+    if live_current_delay > 0:
         settings["query_live"]["current"] = live_current_delay
     elif "current" in settings["query_live"]:
         del settings["query_live"]["current"]
 
-    if live_charge_active:
+    if live_charge_delay > 0:
         settings["query_live"]["charge"] = live_charge_delay
     elif "charge" in settings["query_live"]:
         del settings["query_live"]["charge"]
 
-    if live_temperature_active:
+    if live_temperature_delay > 0:
         settings["query_live"]["temperature"] = live_temperature_delay
     elif "temperature" in settings["query_live"]:
         del settings["query_live"]["temperature"]
 
-    if live_errorflags_active:
+    if live_errorflags_delay > 0:
         settings["query_live"]["errorflags"] = live_errorflags_delay
     elif "errorflags" in settings["query_live"]:
         del settings["query_live"]["errorflags"]
 
-    if live_cell_voltage_0_active:
-        settings["query_live"]["cell_voltage_0"] = live_cell_voltage_0_delay
-    elif "cell_voltage_0" in settings["query_live"]:
-        del settings["query_live"]["cell_voltage_0"]
+    if live_cell_voltage_x_delay > 0:
+        settings["query_live"]["cell_voltage_0"] = live_cell_voltage_x_delay
+        settings["query_live"]["cell_voltage_1"] = live_cell_voltage_x_delay
+        settings["query_live"]["cell_voltage_2"] = live_cell_voltage_x_delay
+        settings["query_live"]["cell_voltage_3"] = live_cell_voltage_x_delay
+    else:
+        for key in settings["query_live"].copy():
+            if key.startswith("cell_voltage_"):
+                del settings["query_live"][key]
 
-    if live_cell_voltage_1_active:
-        settings["query_live"]["cell_voltage_1"] = live_cell_voltage_1_delay
-    elif "cell_voltage_1" in settings["query_live"]:
-        del settings["query_live"]["cell_voltage_1"]
-
-    if live_cell_voltage_2_active:
-        settings["query_live"]["cell_voltage_2"] = live_cell_voltage_2_delay
-    elif "cell_voltage_2" in settings["query_live"]:
-        del settings["query_live"]["cell_voltage_2"]
-
-    if live_cell_voltage_3_active:
-        settings["query_live"]["cell_voltage_3"] = live_cell_voltage_3_delay
-    elif "cell_voltage_3" in settings["query_live"]:
-        del settings["query_live"]["cell_voltage_3"]
-
-    if live_lower_upper_cell_voltage_active:
+    if live_lower_upper_cell_voltage_delay > 0:
         settings["query_live"][
             "lower_upper_cell_voltage"
         ] = live_lower_upper_cell_voltage_delay
@@ -493,45 +389,19 @@ async def dev_settings_post(
             "reboot_delay_days": reboot_delay_days,
             "charge_warn_limit": charge_warn_limit,
             "charge_off_limit": charge_off_limit,
-            "normal_voltage_active": normal_voltage_active,
-            "normal_current_active": normal_current_active,
-            "normal_charge_active": normal_charge_active,
-            "normal_temperature_active": normal_temperature_active,
-            "normal_cell_voltage_0_active": normal_cell_voltage_0_active,
-            "normal_cell_voltage_1_active": normal_cell_voltage_1_active,
-            "normal_cell_voltage_2_active": normal_cell_voltage_2_active,
-            "normal_cell_voltage_3_active": normal_cell_voltage_3_active,
-            "normal_errorflags_active": normal_errorflags_active,
             "normal_voltage_delay": normal_voltage_delay,
             "normal_current_delay": normal_current_delay,
             "normal_charge_delay": normal_charge_delay,
             "normal_temperature_delay": normal_temperature_delay,
-            "normal_cell_voltage_0_delay": normal_cell_voltage_0_delay,
-            "normal_cell_voltage_1_delay": normal_cell_voltage_1_delay,
-            "normal_cell_voltage_2_delay": normal_cell_voltage_2_delay,
-            "normal_cell_voltage_3_delay": normal_cell_voltage_3_delay,
+            "normal_cell_voltage_x_delay": normal_cell_voltage_x_delay,
             "normal_errorflags_delay": normal_errorflags_delay,
-            "normal_lower_upper_cell_voltage_active": normal_lower_upper_cell_voltage_active,
             "normal_lower_upper_cell_voltage_delay": normal_lower_upper_cell_voltage_delay,
-            "live_voltage_active": live_voltage_active,
-            "live_current_active": live_current_active,
-            "live_charge_active": live_charge_active,
-            "live_temperature_active": live_temperature_active,
-            "live_cell_voltage_0_active": live_cell_voltage_0_active,
-            "live_cell_voltage_1_active": live_cell_voltage_1_active,
-            "live_cell_voltage_2_active": live_cell_voltage_2_active,
-            "live_cell_voltage_3_active": live_cell_voltage_3_active,
-            "live_errorflags_active": live_errorflags_active,
             "live_voltage_delay": live_voltage_delay,
             "live_current_delay": live_current_delay,
             "live_charge_delay": live_charge_delay,
             "live_temperature_delay": live_temperature_delay,
-            "live_cell_voltage_0_delay": live_cell_voltage_0_delay,
-            "live_cell_voltage_1_delay": live_cell_voltage_1_delay,
-            "live_cell_voltage_2_delay": live_cell_voltage_2_delay,
-            "live_cell_voltage_3_delay": live_cell_voltage_3_delay,
+            "live_cell_voltage_x_delay": live_cell_voltage_x_delay,
             "live_errorflags_delay": live_errorflags_delay,
-            "live_lower_upper_cell_voltage_active": live_lower_upper_cell_voltage_active,
             "live_lower_upper_cell_voltage_delay": live_lower_upper_cell_voltage_delay,
             "override_charge": override_charge,
             "lower_upper_voltage": lower_upper_voltage,
@@ -1056,8 +926,6 @@ if __name__ in ("__main__", "api"):
         "charge_off_limit": 10,
         "override_charge": False,
         "lower_upper_voltage": False,
-        "override_charge_threshold_voltage": 13.8,
-        "override_charge_threshold_current": -1.0,
         "query_normal": {
             "voltage": 60,
             "current": 10,

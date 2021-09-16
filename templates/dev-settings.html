@@ -33,7 +33,8 @@
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="lower_upper_voltage" id="lower_upper_voltage"
                        value="lower_upper_voltage" {{ 'checked' if lower_upper_voltage else '' }}>
-                <label class="form-check-label" for="lower_upper_voltage">Nur Untere/Obere Zellspannung anzeigen. Nicht vergessen die Abfragen zu aktivieren</label>
+                <label class="form-check-label" for="lower_upper_voltage">Nur Untere/Obere Zellspannung
+                    anzeigen.</label>
             </div>
 
             <br/>
@@ -60,212 +61,181 @@
                 <label class="form-label" for="charge_off_limit">Ladung Abschaltung %</label>
             </div>
             <br/>
+            <hr class="bg-white"/>
+            <p>Abfragen im unbeobachteten Modus (Normal)<br/>Die Einstellung 0 Sekunden deaktiviert die jeweilige
+                Abfrage.</p>
+
+            <div class="row">
+                <div class="col">Spannung</div>
+                <div class="col"><input id="normal_voltage_delay" type="range" min="0" max="60" step="2"
+                                        class="custom-range"
+                                        name="normal_voltage_delay" value="{{ normal_voltage_delay }}"
+                                        oninput="document.getElementById('normal_voltage_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="normal_voltage_delay_output">{{ normal_voltage_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Strom</div>
+                <div class="col"><input type="range" min=0 max="60" step="2" class="custom-range"
+                                        name="normal_current_delay"
+                                        value="{{ normal_current_delay }}"
+                                        oninput="document.getElementById('normal_current_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="normal_current_delay_output">{{ normal_current_delay }} s</output>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">Ladung</div>
+                <div class="col"><input type="range" min=0 max="60" step="2" class="custom-range"
+                                        name="normal_charge_delay"
+                                        value="{{ normal_charge_delay }}"
+                                        oninput="document.getElementById('normal_charge_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="normal_charge_delay_output">{{ normal_charge_delay }} s</output>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">Temperatur</div>
+                <div class="col"><input type="range" min=0 max="300" step="60" class="custom-range"
+                                        name="normal_temperature_delay"
+                                        value="{{ normal_temperature_delay }}"
+                                        oninput="document.getElementById('normal_temperature_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="normal_temperature_delay_output">{{ normal_temperature_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Fehlerabfrage</div>
+                <div class="col"><input type="range" min=0 max="360" step="30" class="custom-range"
+                                        name="normal_errorflags_delay"
+                                        value="{{ normal_errorflags_delay }}"
+                                        oninput="document.getElementById('normal_errorflags_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="normal_errorflags_delay_output">{{ normal_errorflags_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Zellspannungen</div>
+                <div class="col"><input type="range" min=0 max="60" step="10" class="custom-range"
+                                        name="normal_cell_voltage_x_delay"
+                                        value="{{ normal_cell_voltage_x_delay }}"
+                                        oninput="document.getElementById('normal_cell_voltage_x_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="normal_cell_voltage_x_delay_output">{{ normal_cell_voltage_x_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col"><span>Untere/Obere<br/>Zellspannung<br/> (ab v7.3)</span></div>
+                <div class="col"><input type="range" min=0 max="60" step="10" class="custom-range"
+                                        name="normal_lower_upper_cell_voltage_delay"
+                                        value="{{ normal_lower_upper_cell_voltage_delay }}"
+                                        oninput="document.getElementById('normal_lower_upper_cell_voltage_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="normal_lower_upper_cell_voltage_delay_output">{{ normal_lower_upper_cell_voltage_delay }}
+                        s
+                    </output>
+                </div>
+            </div>
 
             <br/>
-            <p span class="badge bg-secondary">Abfragen im unbeobachteten Modus (Normal)</p>
-            <table>
-                <thead>
-                <tr>
-                    <th colspan="2">Art</th>
-                    <th>Wiederholung in Sekunden</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>Spannung</td>
-                    <td><input type="checkbox" name="normal_voltage_active" {{ 'checked' if normal_voltage_active else
-                        '' }}>
-                    </td>
-                    <td><input type="number" name="normal_voltage_delay" value="{{ normal_voltage_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Strom</td>
-                    <td><input type="checkbox" name="normal_current_active" {{ 'checked' if normal_current_active else
-                        '' }}>
-                    </td>
-                    <td><input type="number" name="normal_current_delay" value="{{ normal_current_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Ladung</td>
-                    <td><input type="checkbox"
-                               name="normal_charge_active" {{ 'checked' if normal_charge_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_charge_delay" value="{{ normal_charge_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Temperatur</td>
-                    <td><input type="checkbox" name="normal_temperature_active" {{ 'checked' if
-                        normal_temperature_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_temperature_delay" value="{{ normal_temperature_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Fehlerabfrage</td>
-                    <td><input type="checkbox" name="normal_errorflags_active" {{ 'checked' if normal_errorflags_active
-                        else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_errorflags_delay" value="{{ normal_errorflags_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 1</td>
-                    <td><input type="checkbox" name="normal_cell_voltage_0_active" {{ 'checked' if
-                        normal_cell_voltage_0_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_cell_voltage_0_delay"
-                               value="{{ normal_cell_voltage_0_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 2</td>
-                    <td><input type="checkbox" name="normal_cell_voltage_1_active" {{ 'checked' if
-                        normal_cell_voltage_1_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_cell_voltage_1_delay"
-                               value="{{ normal_cell_voltage_1_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 3</td>
-                    <td><input type="checkbox" name="normal_cell_voltage_2_active" {{ 'checked' if
-                        normal_cell_voltage_2_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_cell_voltage_2_delay"
-                               value="{{ normal_cell_voltage_2_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 4</td>
-                    <td><input type="checkbox" name="normal_cell_voltage_3_active" {{ 'checked' if
-                        normal_cell_voltage_3_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_cell_voltage_3_delay"
-                               value="{{ normal_cell_voltage_3_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Untere/Obere Zellspannung (ab v7.3)</td>
-                    <td><input type="checkbox" name="normal_lower_upper_cell_voltage_active" {{ 'checked' if
-                        normal_lower_upper_cell_voltage_active else '' }}>
-                    </td>
-                    <td><input type="number" name="normal_lower_upper_cell_voltage_delay"
-                               value="{{ normal_lower_upper_cell_voltage_delay }}">
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-
-            <br/>
-
-            <p span class="badge bg-primary">Abfragen im beobachteten Modus (Live)</p>
-            <table>
-                <thead>
-                <tr>
-                    <th colspan="2">Art</th>
-                    <th>Wiederholung in Sekunden</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>Spannung</td>
-                    <td><input type="checkbox" name="live_voltage_active" {{ 'checked' if live_voltage_active else
-                        '' }}>
-                    </td>
-                    <td><input type="number" name="live_voltage_delay" value="{{ live_voltage_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Strom</td>
-                    <td><input type="checkbox" name="live_current_active" {{ 'checked' if live_current_active else
-                        '' }}>
-                    </td>
-                    <td><input type="number" name="live_current_delay" value="{{ live_current_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Ladung</td>
-                    <td><input type="checkbox" name="live_charge_active" {{ 'checked' if live_charge_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_charge_delay" value="{{ live_charge_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Temperatur</td>
-                    <td><input type="checkbox" name="live_temperature_active" {{ 'checked' if
-                        live_temperature_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_temperature_delay" value="{{ live_temperature_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Fehlerabfrage</td>
-                    <td><input type="checkbox" name="live_errorflags_active" {{ 'checked' if live_errorflags_active
-                        else '' }}>
-                    </td>
-                    <td><input type="number" name="live_errorflags_delay" value="{{ live_errorflags_delay }}"></td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 1</td>
-                    <td><input type="checkbox" name="live_cell_voltage_0_active" {{ 'checked' if
-                        live_cell_voltage_0_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_cell_voltage_0_delay"
-                               value="{{ live_cell_voltage_0_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 2</td>
-                    <td><input type="checkbox" name="live_cell_voltage_1_active" {{ 'checked' if
-                        live_cell_voltage_1_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_cell_voltage_1_delay"
-                               value="{{ live_cell_voltage_1_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 3</td>
-                    <td><input type="checkbox" name="live_cell_voltage_2_active" {{ 'checked' if
-                        live_cell_voltage_2_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_cell_voltage_2_delay"
-                               value="{{ live_cell_voltage_2_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Zellspannung 4</td>
-                    <td><input type="checkbox" name="live_cell_voltage_3_active" {{ 'checked' if
-                        live_cell_voltage_3_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_cell_voltage_3_delay"
-                               value="{{ live_cell_voltage_3_delay }}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Untere/Obere Zellspannung (ab v7.3)</td>
-                    <td><input type="checkbox" name="live_lower_upper_cell_voltage_active" {{ 'checked' if
-                        live_lower_upper_cell_voltage_active else '' }}>
-                    </td>
-                    <td><input type="number" name="live_lower_upper_cell_voltage_delay"
-                               value="{{ live_lower_upper_cell_voltage_delay }}">
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-
-            <br/>
-
-            <!--
-            <p>
-                <input type="checkbox" name="override_charge" {{ 'checked' if
-                        override_charge else '' }}> Ladung skalieren. (Experimentelles Feature)
-                                                    13.05 V - 14.20 V => 20% - 100% der Kapazität.
-                                                    Wenn das Kriterium nicht erfüllt ist, wird die Ladung vom Controller verwendet.
+            <hr class="bg-white"/>
+            <p>Abfragen im beobachteten Modus (Live)<br/>Die Einstellung 0 Sekunden deaktiviert die jeweilige Abfrage.
             </p>
 
+            <div class="row">
+                <div class="col">Spannung</div>
+                <div class="col"><input id="live_voltage_delay" type="range" min="0" max="60" step="2"
+                                        class="custom-range"
+                                        name="live_voltage_delay" value="{{ live_voltage_delay }}"
+                                        oninput="document.getElementById('live_voltage_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="live_voltage_delay_output">{{ live_voltage_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Strom</div>
+                <div class="col"><input type="range" min=0 max="60" step="2" class="custom-range"
+                                        name="live_current_delay"
+                                        value="{{ live_current_delay }}"
+                                        oninput="document.getElementById('live_current_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="live_current_delay_output">{{ live_current_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Ladung</div>
+                <div class="col"><input type="range" min=0 max="60" step="2" class="custom-range"
+                                        name="live_charge_delay"
+                                        value="{{ live_charge_delay }}"
+                                        oninput="document.getElementById('live_charge_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="live_charge_delay_output">{{ live_charge_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Temperatur</div>
+                <div class="col"><input type="range" min=0 max="300" step="60" class="custom-range"
+                                        name="live_temperature_delay"
+                                        value="{{ live_temperature_delay }}"
+                                        oninput="document.getElementById('live_temperature_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="live_temperature_delay_output">{{ live_temperature_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Fehlerabfrage</div>
+                <div class="col"><input type="range" min=0 max="360" step="30" class="custom-range"
+                                        name="live_errorflags_delay"
+                                        value="{{ live_errorflags_delay }}"
+                                        oninput="document.getElementById('live_errorflags_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="live_errorflags_delay_output">{{ live_errorflags_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">Zellspannungen</div>
+                <div class="col"><input type="range" min=0 max="60" step="10" class="custom-range"
+                                        name="live_cell_voltage_x_delay"
+                                        value="{{ live_cell_voltage_x_delay }}"
+                                        oninput="document.getElementById('live_cell_voltage_x_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="live_cell_voltage_x_delay_output">{{ live_cell_voltage_x_delay }} s</output>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col"><span>Untere/Obere<br/>Zellspannung<br/> (ab v7.3)</span></div>
+                <div class="col"><input type="range" min=0 max="60" step="10" class="custom-range"
+                                        name="live_lower_upper_cell_voltage_delay"
+                                        value="{{ live_lower_upper_cell_voltage_delay }}"
+                                        oninput="document.getElementById('live_lower_upper_cell_voltage_delay_output').value = this.value + ' s'">
+                </div>
+                <div class="col">
+                    <output id="live_lower_upper_cell_voltage_delay_output">{{ live_lower_upper_cell_voltage_delay }}
+                        s
+                    </output>
+                </div>
+            </div>
             <br/>
-            -->
-            <br/>
-
+            <hr class="bg-white">
             <div>
                 <h6>Betriebsmodi - Normal/Live</h6>
-                <div class="text-info">
+                <div class="text">
                     Der beobachtete Modus (live) ist aktiv, solange die Werte aktiv abgefragt
                     werden.
                     <p>
@@ -281,71 +251,74 @@
                 </div>
 
                 <br/>
-
-                <select class="form-control" id="interconnection" name="interconnection">
-                    {% if interconnection == 'series_connection' %}
-                        <option value="series_connection" selected="selected">Reihenschaltung</option>
-                        <option value="parallel_connection">Parallelschaltung</option>
-                    {% elif interconnection == 'parallel_connection' %}
-                        <option value="series_connection">Reihenschaltung</option>
-                        <option value="parallel_connection" selected="selected">Parallelschaltung</option>
-                    {% endif %}
-                </select>
-                <label class="select-label" for="interconnection">Art der Verschaltung</label>
-
-                <br/><br/>
-                <h6>Software-Version</h6>
-                <select class="form-control" id="set_branch" name="set_branch">
-                    {% if current_branch == 'master' %}
-                        <option value="master" selected="selected">master</option>
-                    {% else %}
-                        <option value="master">master</option>
-                    {% endif %}
-                    {% for branch in branches %}
-                        {% if current_branch == branch %}
-                            <option value="{{ branch }}" selected="selected">{{ branch }}</option>
-                        {% elif branch == 'master' %}
-                            {{ continue }}
-                        {% else %}
-                            <option value="{{ branch }}">{{ branch }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-                <label class="select-label" for="set_branch">Aktueller Branch</label>
-
-                <br/>
-                <div class="text-info">
-                    Der stabile Zweig ist der <b>master</b>.
-                    Die anderen Branches dienen zu Testzwecken.
-                    So können zukünftig Änderungen ausprobiert werden.
-                </div>
-
-                <br/>
-
-                <input type="text" class="form-control" id="manufacturer_password" name="manufacturer_password"
-                       placeholder="Herstellerpasswort">
-                <label for="manufacturer_password">Herstellerpasswort setzen</label>
-                <div class="text-info">
-                    Das Herstellerpasswort wird nur gesetzt, wenn eins eingegeben worden ist.
-                    Das Passwort wird im Klartext angezeigt und deswegen auch im Browser gespeichert.
-                    Das Passwort wird kryptografisch sicher auf der Daten-Partition abgespeichert.
-                    Es kann nicht wieder hergestellt werden.
-                </div>
-
-                <br/>
-
-                <div class="custom-file">
-                    <input type="file" id="upload_logo" name="upload_logo">
-                    <label class="custom-file-label" for="upload_logo">Herstellerlogo hochladen</label>
-                </div>
-
-                <br/><br/>
-
-                <button type="submit" class="btn badge-primary btn-block">Speichern</button>
-                <a href="/api/restart-services" class="btn btn-danger btn-block">Neustart</a>
-                <a href="/api/update" class="btn badge-primary btn-block">Update</a>
-                <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
             </div>
+            <hr class="bg-white">
+
+            <select class="form-control" id="interconnection" name="interconnection">
+                {% if interconnection == 'series_connection' %}
+                    <option value="series_connection" selected="selected">Reihenschaltung</option>
+                    <option value="parallel_connection">Parallelschaltung</option>
+                {% elif interconnection == 'parallel_connection' %}
+                    <option value="series_connection">Reihenschaltung</option>
+                    <option value="parallel_connection" selected="selected">Parallelschaltung</option>
+                {% endif %}
+            </select>
+            <label class="select-label" for="interconnection">Art der Verschaltung</label>
+
+            <br/><br/>
+            <hr class="bg-white">
+            <h6>Software-Version</h6>
+            <select class="form-control" id="set_branch" name="set_branch">
+                {% if current_branch == 'master' %}
+                    <option value="master" selected="selected">master</option>
+                {% else %}
+                    <option value="master">master</option>
+                {% endif %}
+                {% for branch in branches %}
+                    {% if current_branch == branch %}
+                        <option value="{{ branch }}" selected="selected">{{ branch }}</option>
+                    {% elif branch == 'master' %}
+                        {{ continue }}
+                    {% else %}
+                        <option value="{{ branch }}">{{ branch }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <label class="select-label" for="set_branch">Aktueller Branch</label>
+            <hr class="bg-white">
+            <br/>
+            <div class="text">
+                Der stabile Zweig ist der <b>master</b>.
+                Die anderen Branches dienen zu Testzwecken.
+                So können zukünftig Änderungen ausprobiert werden.
+            </div>
+
+            <br/>
+            <hr class="bg-white">
+            <input type="text" class="form-control" id="manufacturer_password" name="manufacturer_password"
+                   placeholder="Herstellerpasswort">
+            <label for="manufacturer_password">Herstellerpasswort setzen</label>
+            <div class="text">
+                Das Herstellerpasswort wird nur gesetzt, wenn eins eingegeben worden ist.
+                Das Passwort wird im Klartext angezeigt und deswegen auch im Browser gespeichert.
+                Das Passwort wird kryptografisch sicher auf der Daten-Partition abgespeichert.
+                Es kann nicht wieder hergestellt werden.
+            </div>
+
+            <br/>
+            <hr class="bg-white">
+            <div class="custom-file">
+                <input type="file" id="upload_logo" name="upload_logo">
+                <label class="custom-file-label" for="upload_logo">Herstellerlogo hochladen</label>
+            </div>
+
+            <br/><br/>
+
+            <button type="submit" class="btn badge-primary btn-block">Speichern</button>
+            <a href="/api/restart-services" class="btn btn-danger btn-block">Neustart</a>
+            <a href="/api/update" class="btn badge-primary btn-block">Update</a>
+            <a href="/settings.html" class="btn btn-warning btn-block">Zurück</a>
+        </div>
     </form>
 </div>
 
