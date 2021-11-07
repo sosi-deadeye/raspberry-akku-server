@@ -1,6 +1,6 @@
 # raspberry-akku-server
 - Controller-Version: 7.3
-- Software-Version: 4.3.7
+- Software-Version: 4.3.8
 
 ## Dienste
 - api (Bereitstellung der Daten via http)
@@ -15,4 +15,3 @@ Es wird ein venv für den Interpreter verwendet (/home/server/venv)
 Zum aktivieren des venv:
 
 source /home/server/venv/bin/activate
-
