@@ -188,18 +188,39 @@
     }
 
     function register_event(endpoint, element_id, msg_ok_title, msg_ok_text, msg_error, timeout) {
+
         function do_action(event) {
             on_timeout = setTimeout(function () {
-                fetch(endpoint, {"method": "POST"}).then(function (response) {
-                    return response.json();
+
+                swal(msg_ok_title, {
+                    buttons: {
+                        catch: {
+                            text: "Ausführen",
+                            value: endpoint
+                        },
+                        cancel: "Abbrechen"
+                    }
+                }).then(function (value) {
+                    // console.log(value);
+
+                    if (value) {
+                        return fetch(value, {"method": "POST"}).then(function (response) {
+                            return response.json();
+                        })
+                    } else {
+                        return "{'success':false}";
+                    }
                 }).then(function (myJson) {
                     if (myJson["success"] === true) {
+                        console.log(msg_ok_title + "\n" + msg_ok_text);
                         swal(msg_ok_title, msg_ok_text);
                     } else {
+                        console.log(msg_error);
                         swal(msg_error);
                     }
                 });
             }, timeout);
+
         }
 
         const on_button = document.getElementById(element_id);
