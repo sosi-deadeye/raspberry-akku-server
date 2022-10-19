@@ -32,7 +32,7 @@ def move_old_database(file_size_limit: int):
     file_size_limit *= 1024 ** 2
     if DB_PATH.exists() and DB_PATH.stat().st_size > file_size_limit:
         DB_PATH.rename(DB_BACKUP)
-        DB_PATH.write_bytes(b"")
+        DB_PATH.touch()
 
 
 class Cycle(Base):
@@ -91,7 +91,7 @@ try:
     Base.metadata.create_all(engine)
 except Exception as e:
     print(e)
-    DB_PATH.write_bytes(b"")
+    DB_PATH.touch()
     Base.metadata.create_all(engine)
 Session = scoped_session(sessionmaker(bind=engine))
 
